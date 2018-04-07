@@ -20,6 +20,7 @@ import qualified Data.Conduit.List as CL
 import qualified Data.Conduit.Network as Network
 import           Data.Monoid
 import qualified Data.Text as T
+import           Data.Word
 import           Hex.Parsers
 import           Hex.Types
 
@@ -71,9 +72,32 @@ clientMessageConduit = do
       case initResult of
         Left _ -> logError "Invalid initiation message."
         Right version ->
-          logDebug
-            ("Received initiation message. Protocol version: " <>
-             T.pack (show version))
+          do logDebug
+               ("Received initiation message. Protocol version: " <>
+                T.pack (show version))
+
+--------------------------------------------------------------------------------
+-- Initial server info
+
+defaultInfo :: Info
+defaultInfo =
+  Info
+  { infoRelease = 0 -- TODO: ?
+  , infoResourceIdBase = 0 -- TODO: ?
+  , infoResourceIdMask = 0 -- TODO: ?
+  , infoMotionBufferSize = 0
+  , infoVendor = "Chris Done"
+  , infoMaximumRequestLength = maxBound :: Word16
+  , infoImageByteOrder = MostSignificantFirst -- TODO: ?
+  , infoImageBitOrder = MostSignificantFirst -- TODO: ?
+  , infoBitmapFormatScanlineUnit = 32
+  , infoBitmapFormatScanlinePad = 32
+  , infoMinKeycode = 8
+  , infoMaxKeycode = 8
+  , infoPixmapFormats = []
+  , infoScreens = []
+  , infoVersion = Version {versionMajor = 11, versionMinor = 0}
+  }
 
 --------------------------------------------------------------------------------
 -- Constants
