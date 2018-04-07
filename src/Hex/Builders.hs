@@ -4,9 +4,11 @@
 
 module Hex.Builders where
 
-import qualified Data.ByteString as S
 import           Data.ByteString (ByteString)
+import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy.Builder as L
+import           Data.Coerce
+import           Data.Set (Set)
 import           Data.Word
 import           Hex.Types
 
@@ -14,7 +16,7 @@ buildServerMessage :: ServerMessage -> StreamBuilder
 buildServerMessage =
   \case
     ConnectionAccepted info ->
-      mconcat [buildSetupResult Success, buildInfo info]
+      mconcat [buildEnum Success, buildInfo info]
 
 buildInfo :: Info -> StreamBuilder
 buildInfo info =
@@ -53,14 +55,52 @@ buildPixmapFormat fmt =
     ]
 
 buildScreen :: Screen -> StreamBuilder
-buildScreen = undefined
+buildScreen scr =
+  mconcat
+    [ buildWord32 (coerce (screenRoot scr))
+    , buildWord32 (coerce (screenDefaultColormap scr))
+    , buildWord32 (screenWhitePixel scr)
+    , buildWord32 (screenBlackPixel scr)
+    , buildBitset (screenCurrentInputMasks scr)
+    , buildWord16 (screenWidthInPixels scr)
+    , buildWord16 (screenHeightInPixels scr)
+    , buildWord16 (screenWidthInMillimeters scr)
+    , buildWord16 (screenHeightInMillimeters scr)
+    , buildWord16 (screenMinInstalledMaps scr)
+    , buildWord16 (screenMaxInstalledMaps scr)
+    , buildWord32 (coerce (screenRootVisual scr))
+    , buildEnum (screenBackingStores scr)
+    , buildEnum (screenSaveUnders scr)
+    , buildWord8 (screenRootDepth scr)
+    , mconcat (map buildDepth (screenAllowedDepths scr))
+    ]
+
+buildDepth :: Depth -> StreamBuilder
+buildDepth depth =
+  mconcat
+    [ buildWord8 (depthDepth depth)
+    , buildUnused 1
+    , buildWord16 (fromIntegral (length (depthVisuals depth)))
+    , buildUnused 4
+    , mconcat (map buildVisual (depthVisuals depth))
+    ]
+
+buildVisual :: Visual -> StreamBuilder
+buildVisual v =
+  mconcat
+    [ buildWord32 (coerce (visualId v))
+    , buildEnum (visualClass v)
+    , buildWord8 (visualBitsPerRgbValue v)
+    , buildWord16 (visualColormapEntries v)
+    , buildWord32 (visualRedMask v)
+    ]
+
+buildBitset :: Set Event -> StreamBuilder
+buildBitset = undefined
 
 buildVersion :: Version -> StreamBuilder
 buildVersion (Version major minor) =
   mconcat [buildWord16 major, buildWord16 minor]
-
-buildSetupResult :: SetupResult -> StreamBuilder
-buildSetupResult = buildEnum
 
 buildUnused :: Int -> StreamBuilder
 buildUnused n = StreamBuilder (const (L.byteString (S.replicate n 0)))

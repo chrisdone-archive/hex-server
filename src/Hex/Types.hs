@@ -142,7 +142,7 @@ data ColorClass
   | GrayScale
   | PseudoColor
   | DirectColor
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq, Ord, Enum)
 
 newtype ResourceID = ResourceID
   { resourceID :: Word32
