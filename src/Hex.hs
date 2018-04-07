@@ -26,6 +26,7 @@ import qualified Data.Conduit.List as CL
 import qualified Data.Conduit.Network as Network
 import           Data.Functor
 import           Data.Monoid
+import           Data.Set (Set)
 import qualified Data.Text as T
 import           Data.Word
 
@@ -70,6 +71,7 @@ data ServerMessage =
   ConnectionAccepted !Info
   deriving (Show, Eq, Ord)
 
+-- | Info sent from the server upon successful connection.
 data Info = Info
   { infoVersion :: !Version
   , infoRelease :: !Word32
@@ -88,13 +90,104 @@ data Info = Info
   , infoScreens :: ![Screen]
   } deriving (Show, Eq, Ord)
 
-data Format =
-  Format
+-- | Pixmap format.
+data Format = Format
+  { formatDepth :: !Word8
+  , formatBitsperpixel :: !Word8
+  , formatScanlinepad :: !Word8
+  } deriving (Show, Eq, Ord)
+
+-- | A screen/root.
+data Screen = Screen
+  { screenRoot :: WindowID
+  , screenDefaultColormap :: ColorMapID
+  , screenWhitePixel :: Word32
+  , screenBlackPixel :: Word32
+  , screenCurrentInputMasks :: Set Event
+  , screenWidthInPixels :: Word16
+  , screenHeightInPixels :: Word16
+  , screenWidthInMillimeters :: Word16
+  , screenHeightInMillimeters :: Word16
+  , screenMinInstalledMaps :: Word16
+  , screenMaxInstalledMaps :: Word16
+  , screenRootVisual :: VisualID
+  , screenBackingStores :: BackingStores
+  , screenSaveUnders :: Bool
+  , screenRootDepth :: Word8
+  , screenAllowedDepths :: [Depth]
+  } deriving (Show, Eq, Ord)
+
+data BackingStores
+  = Never
+  | WhenMapped
+  | Always
+  deriving (Show, Eq, Ord, Enum)
+
+data Event
+  = KeyPressEvent
+  | KeyReleaseEvent
+  | ButtonPressEvent
+  | ButtonReleaseEvent
+  | EnterWindowEvent
+  | LeaveWindowEvent
+  | PointerMotionEvent
+  | PointerMotionHintEvent
+  | Button1MotionEvent
+  | Button2MotionEvent
+  | Button3MotionEvent
+  | Button4MotionEvent
+  | Button5MotionEvent
+  | ButtonMotionEvent
+  | KeymapStateEvent
+  | ExposureEvent
+  | VisibilityChangeEvent
+  | StructureNotifyEvent
+  | ResizeRedirectEvent
+  | SubstructureNotifyEvent
+  | SubstructureRedirectEvent
+  | FocusChangeEvent
+  | PropertyChangeEvent
+  | ColormapChangeEvent
+  | OwnerGrabButtonEvent
+  deriving (Show, Eq, Ord, Enum)
+
+data Depth = Depth
+  { depthDepth :: !Word8
+  , depthVisuals :: ![Visual]
+  } deriving (Show, Eq, Ord)
+
+data Visual = Visual
+  { visualId :: VisualID
+  , visualClass :: ColorClass
+  , visualBitsPerRgbValue :: Word8
+  , visualColormapEntries :: Word16
+  , visualRedMask :: Word32
+  } deriving (Show, Eq, Ord)
+
+data ColorClass
+  = StaticGray
+  | StaticColor
+  | TrueColor
+  | GrayScale
+  | PseudoColor
+  | DirectColor
   deriving (Show, Eq, Ord)
 
-data Screen =
-  Screen
-  deriving (Show, Eq, Ord)
+newtype ResourceID = ResourceID
+  { resourceID :: Word32
+  } deriving (Show, Eq, Ord)
+
+newtype WindowID = WindowID
+  { windowID :: ResourceID
+  } deriving (Show, Eq, Ord)
+
+newtype VisualID = VisualID
+  { visualID :: ResourceID
+  } deriving (Show, Eq, Ord)
+
+newtype ColorMapID = ColorMapID
+  { colorMapID :: ResourceID
+  } deriving (Show, Eq, Ord)
 
 --------------------------------------------------------------------------------
 -- Complete protocol conduit
