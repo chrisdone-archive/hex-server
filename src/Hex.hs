@@ -38,8 +38,7 @@ runServer =
           runConduit
             (Network.appSource app .|
              clientMessageConduit .|
-             CL.mapM (\msg -> logDebug (T.pack (show msg))) .|
-             CL.sinkNull)
+             clientMessageSink)
           logInfo ("Connection closed: " <> T.pack (show (Network.appSockAddr app)))))
 
 ----------------------------------------------------------------------
@@ -54,6 +53,12 @@ withBound m = do
 
 --------------------------------------------------------------------------------
 -- Complete protocol conduit
+
+-- | Consumer of client messages and source of server messages.
+clientMessageSink ::
+     MonadLogger m => ConduitT (Either CA.ParseError ClientMessage) Void m ()
+clientMessageSink =
+  CL.mapM (\msg -> logDebug (T.pack (show msg))) .| CL.sinkNull
 
 -- | Entry point to the main incoming stream conduit.
 clientMessageConduit ::
