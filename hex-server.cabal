@@ -34,6 +34,9 @@ library
     Haskell2010
   exposed-modules:
     Hex
+    Hex.Types
+    Hex.Parsers
+    Hex.Builders
   build-depends:
     base,
     conduit-extra,
@@ -46,7 +49,8 @@ library
     bytestring,
     attoparsec-binary,
     transformers,
-    mtl
+    mtl,
+    containers
 
 executable hex-sdl
   hs-source-dirs:
