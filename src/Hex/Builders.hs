@@ -4,11 +4,14 @@
 
 module Hex.Builders where
 
+import           Data.Bits
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy.Builder as L
 import           Data.Coerce
+import           Data.Monoid
 import           Data.Set (Set)
+import qualified Data.Set as Set
 import           Data.Word
 import           Hex.Types
 
@@ -39,11 +42,15 @@ buildInfo info =
     , buildWord8 (infoMinKeycode info)
     , buildWord8 (infoMaxKeycode info)
     , buildUnused 4
-    , buildByteString (infoVendor info)
+    , buildByteStringPadded (infoVendor info)
     , mconcat (map buildPixmapFormat (infoPixmapFormats info))
     ]
   where
-    replyLength = undefined
+    replyLength = 8 + 2 * n + ((p + m) `div` 4)
+      where n = fromIntegral (length (infoPixmapFormats info))
+            v = fromIntegral (S.length (infoVendor info))
+            p = pad v
+            m = fromIntegral (length (infoScreens info))
 
 buildPixmapFormat :: Format -> StreamBuilder
 buildPixmapFormat fmt =
@@ -61,7 +68,7 @@ buildScreen scr =
     , buildWord32 (coerce (screenDefaultColormap scr))
     , buildWord32 (screenWhitePixel scr)
     , buildWord32 (screenBlackPixel scr)
-    , buildBitset (screenCurrentInputMasks scr)
+    , buildEventSet (screenCurrentInputMasks scr)
     , buildWord16 (screenWidthInPixels scr)
     , buildWord16 (screenHeightInPixels scr)
     , buildWord16 (screenWidthInMillimeters scr)
@@ -95,8 +102,37 @@ buildVisual v =
     , buildWord32 (visualRedMask v)
     ]
 
-buildBitset :: Set Event -> StreamBuilder
-buildBitset = undefined
+buildEventSet :: Set Event -> StreamBuilder
+buildEventSet = buildWord32 . foldl (.|.) 0 . map encode . Set.toList
+  where
+    encode :: Event -> Word32
+    encode =
+      \case
+        KeyPressEvent -> 0x00000001
+        KeyReleaseEvent -> 0x00000002
+        ButtonPressEvent -> 0x00000004
+        ButtonReleaseEvent -> 0x00000008
+        EnterWindowEvent -> 0x00000010
+        LeaveWindowEvent -> 0x00000020
+        PointerMotionEvent -> 0x00000040
+        PointerMotionHintEvent -> 0x00000080
+        Button1MotionEvent -> 0x00000100
+        Button2MotionEvent -> 0x00000200
+        Button3MotionEvent -> 0x00000400
+        Button4MotionEvent -> 0x00000800
+        Button5MotionEvent -> 0x00001000
+        ButtonMotionEvent -> 0x00002000
+        KeymapStateEvent -> 0x00004000
+        ExposureEvent -> 0x00008000
+        VisibilityChangeEvent -> 0x00010000
+        StructureNotifyEvent -> 0x00020000
+        ResizeRedirectEvent -> 0x00040000
+        SubstructureNotifyEvent -> 0x00080000
+        SubstructureRedirectEvent -> 0x00100000
+        FocusChangeEvent -> 0x00200000
+        PropertyChangeEvent -> 0x00400000
+        ColormapChangeEvent -> 0x00800000
+        OwnerGrabButtonEvent -> 0x01000000
 
 buildVersion :: Version -> StreamBuilder
 buildVersion (Version major minor) =
@@ -108,8 +144,13 @@ buildUnused n = StreamBuilder (const (L.byteString (S.replicate n 0)))
 buildEnum :: Enum a => a -> StreamBuilder
 buildEnum = buildWord8 . fromIntegral . fromEnum
 
-buildByteString :: ByteString -> StreamBuilder
-buildByteString = StreamBuilder . const . L.byteString
+buildByteStringPadded :: ByteString -> StreamBuilder
+buildByteStringPadded = StreamBuilder . const . L.byteString . padded
+  where
+    padded s =
+      S.take
+        (fromIntegral (pad (fromIntegral (S.length s))))
+        (s <> S.replicate 4 (0 :: Word8))
 
 buildWord8 :: Word8 -> StreamBuilder
 buildWord8 = StreamBuilder . const . L.word8
@@ -129,3 +170,21 @@ buildWord32 w =
        case streamSettingsEndianness s of
          MostSignificantFirst -> L.word32BE w
          LeastSignificantFirst -> L.word32LE w)
+
+--------------------------------------------------------------------------------
+-- X11 Helpers
+
+-- | If the number of unused bytes is variable, the encode-form
+-- typically is:
+--
+-- p unused, p=pad(E)
+--
+-- where E is some expression, and pad(E) is the number of bytes
+-- needed to round E up to a multiple of four.
+--
+-- pad(E) = (4 - (E mod 4)) mod 4
+pad :: Word16 -> Word16
+pad e =
+  case mod e 4 of
+    0 -> e
+    remainder -> e + 4 - remainder
