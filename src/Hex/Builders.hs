@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
 
 -- | Printers of server messages.
@@ -7,6 +8,7 @@ module Hex.Builders where
 import           Data.Bits
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as S
+import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Lazy.Builder as L
 import           Data.Coerce
 import           Data.Monoid
@@ -14,6 +16,10 @@ import           Data.Set (Set)
 import qualified Data.Set as Set
 import           Data.Word
 import           Hex.Types
+
+streamBuilderToByteString :: StreamSettings -> StreamBuilder -> ByteString
+streamBuilderToByteString settings builder =
+  L.toStrict (L.toLazyByteString (runStreamBuilder builder settings))
 
 buildServerMessage :: ServerMessage -> StreamBuilder
 buildServerMessage =
@@ -44,13 +50,15 @@ buildInfo info =
     , buildUnused 4
     , buildByteStringPadded (infoVendor info)
     , mconcat (map buildPixmapFormat (infoPixmapFormats info))
+    , mconcat (map buildScreen (infoScreens info))
     ]
   where
     replyLength = 8 + 2 * n + ((p + m) `div` 4)
-      where n = fromIntegral (length (infoPixmapFormats info))
-            v = fromIntegral (S.length (infoVendor info))
-            p = pad v
-            m = fromIntegral (length (infoScreens info))
+      where
+        n = fromIntegral (length (infoPixmapFormats info))
+        v = fromIntegral (S.length (infoVendor info))
+        p = pad v
+        m = fromIntegral (length (infoScreens info))
 
 buildPixmapFormat :: Format -> StreamBuilder
 buildPixmapFormat fmt =
@@ -58,7 +66,7 @@ buildPixmapFormat fmt =
     [ buildWord8 (formatDepth fmt)
     , buildWord8 (formatBitsperpixel fmt)
     , buildWord8 (formatScanlinepad fmt)
-    , buildUnused 4
+    , buildUnused 5
     ]
 
 buildScreen :: Screen -> StreamBuilder
@@ -79,6 +87,7 @@ buildScreen scr =
     , buildEnum (screenBackingStores scr)
     , buildEnum (screenSaveUnders scr)
     , buildWord8 (screenRootDepth scr)
+    , buildWord8 (fromIntegral (length (screenAllowedDepths scr)))
     , mconcat (map buildDepth (screenAllowedDepths scr))
     ]
 
@@ -151,6 +160,9 @@ buildByteStringPadded = StreamBuilder . const . L.byteString . padded
       S.take
         (fromIntegral (pad (fromIntegral (S.length s))))
         (s <> S.replicate 4 (0 :: Word8))
+
+buildByteString :: ByteString -> StreamBuilder
+buildByteString = StreamBuilder . const . L.byteString
 
 buildWord8 :: Word8 -> StreamBuilder
 buildWord8 = StreamBuilder . const . L.word8

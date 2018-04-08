@@ -37,6 +37,7 @@ library
     Hex.Types
     Hex.Parsers
     Hex.Builders
+    BinaryView
   build-depends:
     base,
     conduit-extra,
@@ -88,7 +89,8 @@ test-suite hex-test
     hspec,
     async,
     X11,
-    monad-logger
+    monad-logger,
+    unliftio-core
   ghc-options:
     -Wall -threaded -rtsopts -with-rtsopts=-N -O2
   default-language:

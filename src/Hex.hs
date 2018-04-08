@@ -7,7 +7,10 @@ module Hex
   ( runServer
   ) where
 
+import           BinaryView
+import           Control.Concurrent (threadDelay)
 import qualified Control.Concurrent.Async as Async
+import           Control.Monad.IO.Class
 import           Control.Monad.IO.Class (liftIO)
 import           Control.Monad.IO.Unlift (askRunInIO, MonadUnliftIO)
 import           Control.Monad.Logger.CallStack (logError, logDebug, logInfo, MonadLogger)
@@ -21,6 +24,7 @@ import qualified Data.Conduit.Network as Network
 import           Data.Monoid
 import qualified Data.Text as T
 import           Data.Word
+import           Hex.Builders
 import           Hex.Parsers
 import           Hex.Types
 
@@ -34,14 +38,20 @@ runServer =
     (Network.runGeneralTCPServer
        (Network.serverSettings (fst x11PortRange) "127.0.0.1")
        (\app -> do
-          logInfo ("New connection from " <> T.pack (show (Network.appSockAddr app)))
+          logInfo
+            ("New connection from " <> T.pack (show (Network.appSockAddr app)))
           runConduit
             (Network.appSource app .|
+             CL.mapM
+               (\bytes -> do
+                  logDebug ("<=\n" <> T.pack (binaryView 1 bytes))
+                  pure bytes) .|
              clientMessageConduit .|
-             clientMessageSink)
-          logInfo ("Connection closed: " <> T.pack (show (Network.appSockAddr app)))))
+             clientMessageSink app)
+          logInfo
+            ("Connection closed: " <> T.pack (show (Network.appSockAddr app)))))
 
-----------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Threading helpers
 
 -- | Run an action in a bound thread. This is neccessary due to the
@@ -56,13 +66,34 @@ withBound m = do
 
 -- | Consumer of client messages and source of server messages.
 clientMessageSink ::
-     MonadLogger m => ConduitT (Either CA.ParseError ClientMessage) Void m ()
-clientMessageSink =
-  CL.mapM (\msg -> logDebug (T.pack (show msg))) .| CL.sinkNull
+     (MonadIO m, MonadLogger m)
+  => Network.AppData
+  -> ConduitT ClientMessage Void m ()
+clientMessageSink app = do
+  mmsg <- await
+  case mmsg of
+    Nothing -> logError "No initial message."
+    Just msg -> do
+      logDebug ("=> " <> T.pack (show msg))
+      case msg of
+        InitialClientMessage endianness ->
+          let streamSettings =
+                StreamSettings {streamSettingsEndianness = endianness}
+          in do runConduit
+                  (yield (ConnectionAccepted defaultInfo) .|
+                   CL.map
+                     (streamBuilderToByteString streamSettings .
+                      buildServerMessage) .|
+                   CL.mapM
+                     (\bytes -> do
+                        logDebug ("=>\n" <> T.pack (binaryView 1 bytes))
+                        pure bytes) .|
+                   Network.appSink app)
+                CL.sinkNull
 
 -- | Entry point to the main incoming stream conduit.
 clientMessageConduit ::
-     MonadLogger m => ConduitT ByteString (Either CA.ParseError ClientMessage) m ()
+     MonadLogger m => ConduitT ByteString ClientMessage m ()
 clientMessageConduit = do
   endiannessResult <- CA.sinkParserEither endiannessParser
   case endiannessResult of
@@ -76,10 +107,12 @@ clientMessageConduit = do
           (runReaderT (runStreamParser initiationParser) streamSettings)
       case initResult of
         Left _ -> logError "Invalid initiation message."
-        Right version ->
-          do logDebug
-               ("Received initiation message. Protocol version: " <>
-                T.pack (show version))
+        Right version -> do
+          logDebug
+            ("Received initiation message. Protocol version: " <>
+             T.pack (show version))
+          yield (InitialClientMessage endianness)
+          CL.sinkNull
 
 --------------------------------------------------------------------------------
 -- Initial server info
@@ -89,9 +122,9 @@ defaultInfo =
   Info
   { infoRelease = 0 -- TODO: ?
   , infoResourceIdBase = 0 -- TODO: ?
-  , infoResourceIdMask = 0 -- TODO: ?
+  , infoResourceIdMask = 1 -- TODO: ?
   , infoMotionBufferSize = 0
-  , infoVendor = "Chris Done"
+  , infoVendor = "ABCD"
   , infoMaximumRequestLength = maxBound :: Word16
   , infoImageByteOrder = MostSignificantFirst -- TODO: ?
   , infoImageBitOrder = MostSignificantFirst -- TODO: ?
@@ -99,8 +132,30 @@ defaultInfo =
   , infoBitmapFormatScanlinePad = 32
   , infoMinKeycode = 8
   , infoMaxKeycode = 8
-  , infoPixmapFormats = []
-  , infoScreens = []
+  , infoPixmapFormats =
+      [ Format
+        {formatDepth = 32, formatBitsperpixel = 32, formatScanlinepad = 32}
+      ]
+  , infoScreens =
+      [ Screen
+        { screenRoot = WindowID (ResourceID 0)
+        , screenDefaultColormap = ColorMapID (ResourceID 0)
+        , screenWhitePixel = 0x00ffffff
+        , screenBlackPixel = 0x00000000
+        , screenCurrentInputMasks = mempty
+        , screenWidthInPixels = 1024
+        , screenHeightInPixels = 768
+        , screenWidthInMillimeters = 1024
+        , screenHeightInMillimeters = 768
+        , screenMinInstalledMaps = 1
+        , screenMaxInstalledMaps = 1
+        , screenRootVisual = VisualID (ResourceID 0)
+        , screenBackingStores = Never
+        , screenSaveUnders = False
+        , screenRootDepth = 32
+        , screenAllowedDepths = [Depth 32 []]
+        }
+      ]
   , infoVersion = Version {versionMajor = 11, versionMinor = 0}
   }
 

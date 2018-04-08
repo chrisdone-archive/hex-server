@@ -34,7 +34,7 @@ newtype StreamParser a = StreamParser
 
 -- | Some message from the client to the server.
 data ClientMessage =
-  EndiannessClientMessage !Endianness
+  InitialClientMessage !Endianness
   deriving (Show, Eq, Ord)
 
 -- | Some message from the server to the client.
