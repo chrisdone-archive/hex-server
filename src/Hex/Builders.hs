@@ -25,40 +25,44 @@ buildServerMessage :: ServerMessage -> StreamBuilder
 buildServerMessage =
   \case
     ConnectionAccepted info ->
-      mconcat [buildEnum Success, buildInfo info]
+      mconcat [buildEnum8 Success, buildInfo info]
 
 buildInfo :: Info -> StreamBuilder
 buildInfo info =
-  mconcat
-    [ buildUnused 1
-    , buildVersion (infoVersion info)
-    , buildWord16 replyLength
-    , buildWord32 (infoRelease info)
-    , buildWord32 (infoResourceIdBase info)
-    , buildWord32 (infoResourceIdMask info)
-    , buildWord32 (infoMotionBufferSize info)
-    , buildWord16 (fromIntegral (S.length (infoVendor info)))
-    , buildWord16 (infoMaximumRequestLength info)
-    , buildWord8 (fromIntegral (length (infoScreens info)))
-    , buildWord8 (fromIntegral (length (infoPixmapFormats info)))
-    , buildEnum (infoImageByteOrder info)
-    , buildEnum (infoImageBitOrder info)
-    , buildWord8 (infoBitmapFormatScanlineUnit info)
-    , buildWord8 (infoBitmapFormatScanlinePad info)
-    , buildWord8 (infoMinKeycode info)
-    , buildWord8 (infoMaxKeycode info)
-    , buildUnused 4
-    , buildByteStringPadded (infoVendor info)
-    , mconcat (map buildPixmapFormat (infoPixmapFormats info))
-    , mconcat (map buildScreen (infoScreens info))
-    ]
+  StreamBuilder
+    (\settings ->
+       let body = makeBody settings
+       in runStreamBuilder (header body) settings <> L.byteString body)
   where
-    replyLength = 8 + 2 * n + ((p + m) `div` 4)
-      where
-        n = fromIntegral (length (infoPixmapFormats info))
-        v = fromIntegral (S.length (infoVendor info))
-        p = pad v
-        m = fromIntegral (length (infoScreens info))
+    header body =
+      mconcat
+        [ buildUnused 1
+        , buildVersion (infoVersion info)
+        , buildWord16 (fromIntegral (S.length body))
+        ]
+    makeBody settings =
+      streamBuilderToByteString
+        settings
+        (mconcat
+           [ buildWord32 (infoRelease info)
+           , buildWord32 (infoResourceIdBase info)
+           , buildWord32 (infoResourceIdMask info)
+           , buildWord32 (infoMotionBufferSize info)
+           , buildWord16 (fromIntegral (S.length (infoVendor info)))
+           , buildWord16 (infoMaximumRequestLength info)
+           , buildWord8 (fromIntegral (length (infoScreens info)))
+           , buildWord8 (fromIntegral (length (infoPixmapFormats info)))
+           , buildEnum8 (infoImageByteOrder info)
+           , buildEnum8 (infoImageBitOrder info)
+           , buildWord8 (infoBitmapFormatScanlineUnit info)
+           , buildWord8 (infoBitmapFormatScanlinePad info)
+           , buildWord8 (infoMinKeycode info)
+           , buildWord8 (infoMaxKeycode info)
+           , buildUnused 4
+           , buildByteStringPadded (infoVendor info)
+           , mconcat (map buildPixmapFormat (infoPixmapFormats info))
+           , mconcat (map buildScreen (infoScreens info))
+           ])
 
 buildPixmapFormat :: Format -> StreamBuilder
 buildPixmapFormat fmt =
@@ -72,22 +76,22 @@ buildPixmapFormat fmt =
 buildScreen :: Screen -> StreamBuilder
 buildScreen scr =
   mconcat
-    [ buildWord32 (coerce (screenRoot scr))
-    , buildWord32 (coerce (screenDefaultColormap scr))
-    , buildWord32 (screenWhitePixel scr)
-    , buildWord32 (screenBlackPixel scr)
-    , buildEventSet (screenCurrentInputMasks scr)
-    , buildWord16 (screenWidthInPixels scr)
-    , buildWord16 (screenHeightInPixels scr)
-    , buildWord16 (screenWidthInMillimeters scr)
-    , buildWord16 (screenHeightInMillimeters scr)
-    , buildWord16 (screenMinInstalledMaps scr)
-    , buildWord16 (screenMaxInstalledMaps scr)
-    , buildWord32 (coerce (screenRootVisual scr))
-    , buildEnum (screenBackingStores scr)
-    , buildEnum (screenSaveUnders scr)
-    , buildWord8 (screenRootDepth scr)
-    , buildWord8 (fromIntegral (length (screenAllowedDepths scr)))
+    [ {-0-} buildWord32 (coerce (screenRoot scr))
+    , {-4-} buildWord32 (coerce (screenDefaultColormap scr))
+    , {-8-} buildWord32 (screenWhitePixel scr)
+    , {-12-} buildWord32 (screenBlackPixel scr)
+    , {-16-} buildEventSet (screenCurrentInputMasks scr)
+    , {-20-} buildWord16 (screenWidthInPixels scr)
+    , {-22-} buildWord16 (screenHeightInPixels scr)
+    , {-24-} buildWord16 (screenWidthInMillimeters scr)
+    , {-26-} buildWord16 (screenHeightInMillimeters scr)
+    , {-28-} buildWord16 (screenMinInstalledMaps scr)
+    , {-30-} buildWord16 (screenMaxInstalledMaps scr)
+    , {-32-} buildWord32 (coerce (screenRootVisual scr))
+    , {-36-} buildEnum8 (screenBackingStores scr)
+    , {-37-} buildEnum8 (screenSaveUnders scr)
+    , {-38-} buildWord8 (screenRootDepth scr)
+    , {-39-} buildWord8 (fromIntegral (length (screenAllowedDepths scr)))
     , mconcat (map buildDepth (screenAllowedDepths scr))
     ]
 
@@ -105,7 +109,7 @@ buildVisual :: Visual -> StreamBuilder
 buildVisual v =
   mconcat
     [ buildWord32 (coerce (visualId v))
-    , buildEnum (visualClass v)
+    , buildEnum8 (visualClass v)
     , buildWord8 (visualBitsPerRgbValue v)
     , buildWord16 (visualColormapEntries v)
     , buildWord32 (visualRedMask v)
@@ -150,8 +154,8 @@ buildVersion (Version major minor) =
 buildUnused :: Int -> StreamBuilder
 buildUnused n = StreamBuilder (const (L.byteString (S.replicate n 0)))
 
-buildEnum :: Enum a => a -> StreamBuilder
-buildEnum = buildWord8 . fromIntegral . fromEnum
+buildEnum8 :: Enum a => a -> StreamBuilder
+buildEnum8 = buildWord8 . fromIntegral . fromEnum
 
 buildByteStringPadded :: ByteString -> StreamBuilder
 buildByteStringPadded = StreamBuilder . const . L.byteString . padded
@@ -163,6 +167,9 @@ buildByteStringPadded = StreamBuilder . const . L.byteString . padded
 
 buildByteString :: ByteString -> StreamBuilder
 buildByteString = StreamBuilder . const . L.byteString
+
+buildLazyByteString :: L.ByteString -> StreamBuilder
+buildLazyByteString = StreamBuilder . const . L.lazyByteString
 
 buildWord8 :: Word8 -> StreamBuilder
 buildWord8 = StreamBuilder . const . L.word8
