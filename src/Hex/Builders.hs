@@ -38,7 +38,7 @@ buildInfo info =
       mconcat
         [ buildUnused 1
         , buildVersion (infoVersion info)
-        , buildWord16 (fromIntegral (S.length body))
+        , buildWord16 (fromIntegral (div (S.length body) 4))
         ]
     makeBody settings =
       streamBuilderToByteString

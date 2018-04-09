@@ -24,6 +24,7 @@ int main(void)
   uint32_t             values[2];
   int                  done = 0;
   xcb_rectangle_t      r = { 20, 20, 60, 60 };
+  setvbuf(stdout, NULL, _IONBF, 0);
 
                         /* open connection with the server */
   c = xcb_connect("192.168.1.102:0", NULL);
@@ -31,6 +32,8 @@ int main(void)
     printf("Cannot open display: %d\n",xcb_connection_has_error(c));
     exit(1);
   }
+  printf("Connected OK!\n");
+  return 0;
                         /* get the first screen */
   s = xcb_setup_roots_iterator( xcb_get_setup(c) ).data;
 

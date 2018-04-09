@@ -27,11 +27,11 @@ basic =
           "Listen & connect"
           (do void
                 (withAsync
-                   (runStdoutLoggingT Hex.runServer)
+                   (withBound (runStdoutLoggingT Hex.runServer))
                    (const
                       (withBound
                          (do threadDelay (1000 * 500)
-                             void (Xlib.openDisplay ":0")))))
+                             void (Xlib.openDisplay "192.168.1.102:0")))))
               shouldBe True True))
 
 -- | Run an action in a bound thread. This is neccessary due to the
