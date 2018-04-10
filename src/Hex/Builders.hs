@@ -24,8 +24,17 @@ streamBuilderToByteString settings builder =
 buildServerMessage :: ServerMessage -> StreamBuilder
 buildServerMessage =
   \case
-    ConnectionAccepted info ->
-      mconcat [buildEnum8 Success, buildInfo info]
+    ConnectionAccepted info -> mconcat [buildEnum8 Success, buildInfo info]
+    UnsupportedExtension sid ->
+      mconcat
+        [ buildWord8 1
+        , buildUnused 1
+        , buildWord16 (coerce sid)
+        , buildWord32 0
+        , buildEnum8 False
+        , buildUnused 3
+        , buildUnused 20
+        ]
 
 buildInfo :: Info -> StreamBuilder
 buildInfo info =

@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -9,6 +10,7 @@ module Hex
   ) where
 
 import           BinaryView
+import           Control.Monad
 import           Control.Monad.Catch
 import           Control.Monad.IO.Unlift (MonadUnliftIO)
 import           Control.Monad.Logger.CallStack (logError, logDebug, logInfo, MonadLogger)
@@ -98,13 +100,36 @@ requestReplyLoop ::
   -> ConduitT ByteString ByteString m ()
 requestReplyLoop streamSettings = do
   logDebug "Starting request/reply loop."
-  queryResult <-
-    CA.sinkParserEither
-      (runReaderT (runStreamParser queryExtensionParser) streamSettings)
-  case queryResult of
-    Left e -> throwM (InvalidRequest e)
-    Right extensionName -> do
+  let loop sn = do
+        requestResult <-
+          CA.sinkParserEither
+            (runReaderT (runStreamParser requestParser) streamSettings)
+        case requestResult of
+          Left e -> throwM (InvalidRequest e)
+          Right request -> do
+            continue <- dispatchRequest streamSettings sn request
+            when continue (loop (sn + 1))
+  loop 1
+
+-- | Dispatch on the client request.
+dispatchRequest ::
+     (MonadLogger m, MonadThrow m)
+  => StreamSettings
+  -> SequenceNumber
+  -> ClientMessage
+  -> ConduitT i ByteString m Bool
+dispatchRequest streamSettings sn =
+  \case
+    QueryExtension extensionName -> do
       logInfo ("Client queried extension: " <> T.pack (show extensionName))
+      yieldBuiltMessage streamSettings (UnsupportedExtension sn)
+      pure True
+    CreateGC -> do
+      logInfo "Client asked to create a graphics context. Ignoring."
+      pure True
+    GetProperty -> do
+      logInfo "Client asked for a property."
+      pure True
 
 --------------------------------------------------------------------------------
 -- Communication facilities

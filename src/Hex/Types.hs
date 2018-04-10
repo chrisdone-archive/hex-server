@@ -5,6 +5,7 @@
 
 module Hex.Types where
 
+import           Control.Applicative
 import           Control.Exception
 import           Control.Monad.Reader (ReaderT)
 import           Data.Attoparsec.ByteString (Parser)
@@ -31,7 +32,7 @@ newtype StreamBuilder = StreamBuilder
 -- | A stream parser that holds some X11-specific settings.
 newtype StreamParser a = StreamParser
   { runStreamParser :: ReaderT StreamSettings Parser a
-  } deriving (Monad, Functor, Applicative)
+  } deriving (Monad, Functor, Applicative, Alternative)
 
 --------------------------------------------------------------------------------
 -- Exceptions and errors
@@ -51,20 +52,23 @@ instance Exception ClientException where
       InvalidInitiationMessage e ->
         "Invalid endianness in X11 handshake. Parse error was: " ++ show e
       InvalidRequest e ->
-        "Invalid endianness in X11 request/reply loop. Parse error was: " ++
+        "Invalid request in X11 request/reply loop. Parse error was: " ++
         show e
 
 --------------------------------------------------------------------------------
 -- Messages
 
 -- | Some message from the client to the server.
-data ClientMessage =
-  InitialClientMessage !Endianness
+data ClientMessage
+  = QueryExtension !ByteString
+  | CreateGC
+  | GetProperty
   deriving (Show, Eq, Ord)
 
 -- | Some message from the server to the client.
-data ServerMessage =
-  ConnectionAccepted !Info
+data ServerMessage
+  = ConnectionAccepted !Info
+  | UnsupportedExtension !SequenceNumber
   deriving (Show, Eq, Ord)
 
 -- | Info sent from the server upon successful connection.
@@ -202,3 +206,7 @@ data SetupResult
   | Success
   | Authenticate
   deriving (Show, Eq, Ord, Enum)
+
+newtype SequenceNumber = SequenceNumber
+  { sequenceNumber :: Word16
+  } deriving (Show, Eq, Ord, Num, Integral, Real, Enum)

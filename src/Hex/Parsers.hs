@@ -3,9 +3,10 @@
 module Hex.Parsers
   (endiannessParser
   ,initiationParser
-  ,queryExtensionParser)
+  ,requestParser)
   where
 
+import           Control.Applicative
 import           Control.Monad.Trans
 import           Control.Monad.Trans.Reader
 import qualified Data.Attoparsec.Binary as Atto
@@ -63,19 +64,46 @@ initiationParser = do
 --------------------------------------------------------------------------------
 -- Requests
 
+-- | Parse client requests.
+requestParser :: StreamParser ClientMessage
+requestParser =
+  (QueryExtension <$> queryExtensionParser) <|> (CreateGC <$ createGCParser) <|>
+  (GetProperty <$ getPropertyParser)
+
 -- | QueryExtension: This request determines if the named extension is
 -- present.
 queryExtensionParser :: StreamParser ByteString
 queryExtensionParser = do
   byteParser 98
   unusedParser 1
-  _reqlen <- card16Parser
+  _reqlen <- remainingRequestLength
   nameLen <- stringLengthParser
   unusedParser 2
   stringParser nameLen
 
+-- | CreateGC.
+createGCParser :: StreamParser ()
+createGCParser = do
+  byteParser 55
+  unusedParser 1
+  reqlen <- remainingRequestLength
+  unusedParser reqlen
+
+-- | GetProperty.
+getPropertyParser :: StreamParser ()
+getPropertyParser = do
+  byteParser 20
+  unusedParser 1 -- TODO: delete
+  reqlen <- remainingRequestLength
+  unusedParser reqlen
+
 --------------------------------------------------------------------------------
 -- Parsers for X11-protocol-specific types
+
+remainingRequestLength :: StreamParser Int
+remainingRequestLength = do
+  factorOf4 <- card16Parser
+  pure ((fromIntegral factorOf4 * 4) - 4)
 
 -- | An unused number of bytes.
 unusedParser :: Int -> StreamParser ()
