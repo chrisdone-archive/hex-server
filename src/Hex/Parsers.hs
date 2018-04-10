@@ -100,6 +100,9 @@ getPropertyParser = do
 --------------------------------------------------------------------------------
 -- Parsers for X11-protocol-specific types
 
+-- | Request lengths are multiples of 4. So if the whole request size
+-- in bytes is 20, then the value will be 5 (5x4=20). To remove the
+-- header of 4 bytes we just subtract 4.
 remainingRequestLength :: StreamParser Int
 remainingRequestLength = do
   factorOf4 <- card16Parser
