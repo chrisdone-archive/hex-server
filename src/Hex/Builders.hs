@@ -35,6 +35,17 @@ buildServerMessage =
         , buildUnused 3
         , buildUnused 20
         ]
+    PropertyValue sid ->
+      mconcat
+        [ buildWord8 1
+        , buildUnused 1
+        , buildWord16 (coerce sid)
+        , buildWord32 0 -- len
+        , buildWord32 0 -- None
+        , buildWord32 0 -- bytes-after
+        , buildWord32 0 -- value length
+        , buildUnused 12
+        ]
 
 buildInfo :: Info -> StreamBuilder
 buildInfo info =

@@ -69,6 +69,7 @@ data ClientMessage
 data ServerMessage
   = ConnectionAccepted !Info
   | UnsupportedExtension !SequenceNumber
+  | PropertyValue !SequenceNumber
   deriving (Show, Eq, Ord)
 
 -- | Info sent from the server upon successful connection.

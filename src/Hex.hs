@@ -10,11 +10,12 @@ module Hex
   ) where
 
 import           BinaryView
-import           Control.Monad
+import           Control.Applicative
 import           Control.Monad.Catch
 import           Control.Monad.IO.Unlift (MonadUnliftIO)
 import           Control.Monad.Logger.CallStack (logError, logDebug, logInfo, MonadLogger)
 import           Control.Monad.Trans.Reader
+import qualified Data.Attoparsec.ByteString as Atto
 import           Data.ByteString (ByteString)
 import           Data.Conduit
 import           Data.Conduit (runConduit, (.|))
@@ -93,6 +94,9 @@ handshakeSink = do
              T.pack (show version))
           pure streamSettings
 
+-- | Result of a request dispatch.
+data DispatchResult = Continue | Done
+
 -- | The request/reply loop.
 requestReplyLoop ::
      (MonadLogger m, MonadThrow m)
@@ -103,12 +107,20 @@ requestReplyLoop streamSettings = do
   let loop sn = do
         requestResult <-
           CA.sinkParserEither
-            (runReaderT (runStreamParser requestParser) streamSettings)
+            (fmap
+               Just
+               (runReaderT (runStreamParser requestParser) streamSettings) <|>
+             (Nothing <$ Atto.endOfInput))
         case requestResult of
           Left e -> throwM (InvalidRequest e)
-          Right request -> do
-            continue <- dispatchRequest streamSettings sn request
-            when continue (loop (sn + 1))
+          Right parsed -> do
+            case parsed of
+              Nothing -> logDebug "End of input stream."
+              Just request -> do
+                result <- dispatchRequest streamSettings sn request
+                case result of
+                  Done -> logDebug "Closing client connection."
+                  Continue -> loop (sn + 1)
   loop 1
 
 -- | Dispatch on the client request.
@@ -117,19 +129,20 @@ dispatchRequest ::
   => StreamSettings
   -> SequenceNumber
   -> ClientMessage
-  -> ConduitT i ByteString m Bool
+  -> ConduitT i ByteString m DispatchResult
 dispatchRequest streamSettings sn =
   \case
     QueryExtension extensionName -> do
       logInfo ("Client queried extension: " <> T.pack (show extensionName))
       yieldBuiltMessage streamSettings (UnsupportedExtension sn)
-      pure True
+      pure Continue
     CreateGC -> do
       logInfo "Client asked to create a graphics context. Ignoring."
-      pure True
+      pure Continue
     GetProperty -> do
-      logInfo "Client asked for a property."
-      pure True
+      logInfo "Client asked for a property. Returning None."
+      yieldBuiltMessage streamSettings (PropertyValue sn)
+      pure Continue
 
 --------------------------------------------------------------------------------
 -- Communication facilities
