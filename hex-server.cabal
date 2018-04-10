@@ -51,7 +51,8 @@ library
     attoparsec-binary,
     transformers,
     mtl,
-    containers
+    containers,
+    exceptions
 
 executable hex-sdl
   hs-source-dirs:

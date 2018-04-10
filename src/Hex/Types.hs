@@ -1,15 +1,19 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 -- | All types.
 
 module Hex.Types where
 
-import Control.Monad.Reader (ReaderT)
-import Data.Attoparsec.ByteString (Parser)
-import Data.ByteString (ByteString)
-import Data.ByteString.Lazy.Builder (Builder)
-import Data.Set (Set)
-import Data.Word
+import           Control.Exception
+import           Control.Monad.Reader (ReaderT)
+import           Data.Attoparsec.ByteString (Parser)
+import           Data.ByteString (ByteString)
+import           Data.ByteString.Lazy.Builder (Builder)
+import qualified Data.Conduit.Attoparsec as CA
+import           Data.Set (Set)
+import           Data.Typeable
+import           Data.Word
 
 --------------------------------------------------------------------------------
 -- Parsers and printers
@@ -28,6 +32,27 @@ newtype StreamBuilder = StreamBuilder
 newtype StreamParser a = StreamParser
   { runStreamParser :: ReaderT StreamSettings Parser a
   } deriving (Monad, Functor, Applicative)
+
+--------------------------------------------------------------------------------
+-- Exceptions and errors
+
+-- | A fatal problem with the handshake.
+data ClientException
+  = InvalidEndianness CA.ParseError
+  | InvalidInitiationMessage CA.ParseError
+  | InvalidRequest CA.ParseError
+  deriving (Show, Typeable)
+
+instance Exception ClientException where
+  displayException =
+    \case
+      InvalidEndianness e ->
+        "Invalid endianness in X11 handshake. Parse error was: " ++ show e
+      InvalidInitiationMessage e ->
+        "Invalid endianness in X11 handshake. Parse error was: " ++ show e
+      InvalidRequest e ->
+        "Invalid endianness in X11 request/reply loop. Parse error was: " ++
+        show e
 
 --------------------------------------------------------------------------------
 -- Messages

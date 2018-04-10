@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -8,11 +9,8 @@ module Hex
   ) where
 
 import           BinaryView
-import           Control.Concurrent (threadDelay)
-import qualified Control.Concurrent.Async as Async
-import           Control.Monad.IO.Class
-import           Control.Monad.IO.Class (liftIO)
-import           Control.Monad.IO.Unlift (askRunInIO, MonadUnliftIO)
+import           Control.Monad.Catch
+import           Control.Monad.IO.Unlift (MonadUnliftIO)
 import           Control.Monad.Logger.CallStack (logError, logDebug, logInfo, MonadLogger)
 import           Control.Monad.Trans.Reader
 import           Data.ByteString (ByteString)
@@ -21,6 +19,7 @@ import           Data.Conduit (runConduit, (.|))
 import qualified Data.Conduit.Attoparsec as CA
 import qualified Data.Conduit.List as CL
 import qualified Data.Conduit.Network as Network
+import           Data.List
 import           Data.Monoid
 import qualified Data.Text as T
 import           Data.Word
@@ -32,87 +31,95 @@ import           Hex.Types
 -- Exposed functions
 
 -- | Runs a server in the current thread.
-runServer :: (MonadLogger m, MonadUnliftIO m) => m ()
+runServer :: (MonadLogger m, MonadUnliftIO m, MonadCatch m) => m ()
 runServer =
-  withBound
-    (Network.runGeneralTCPServer
-       (Network.serverSettings (fst x11PortRange) "127.0.0.1")
-       (\app -> do
-          logInfo
-            ("New connection from " <> T.pack (show (Network.appSockAddr app)))
-          runConduit
-            (Network.appSource app .|
-             CL.mapM
-               (\bytes -> do
-                  logDebug ("<=\n" <> T.pack (binaryView 1 bytes))
-                  pure bytes) .|
-             clientMessageConduit .|
-             clientMessageSink app)
-          logInfo
-            ("Connection closed: " <> T.pack (show (Network.appSockAddr app)))))
+  Network.runGeneralTCPServer
+    (Network.serverSettings (fst x11PortRange) "127.0.0.1")
+    (\app -> do
+       logInfo ("New client: " <> T.pack (show (Network.appSockAddr app)))
+       catch
+         (runConduit
+            (Network.appSource app .| logBytes "<=" .| clientConduit .|
+             logBytes "=>" .|
+             Network.appSink app))
+         (\(e :: ClientException) -> logError (T.pack (displayException e)))
+       logInfo ("Client closed: " <> T.pack (show (Network.appSockAddr app))))
 
---------------------------------------------------------------------------------
--- Threading helpers
-
--- | Run an action in a bound thread. This is neccessary due to the
--- interaction with signals in C libraries and GHC's runtime.
-withBound :: MonadUnliftIO m => m a -> m a
-withBound m = do
-  run <- askRunInIO
-  liftIO (Async.withAsyncBound (run m) Async.wait)
+-- | Log raw bytes for debugging purposes.
+logBytes :: (MonadLogger m) => String -> ConduitT ByteString ByteString m ()
+logBytes prefix =
+  CL.mapM
+    (\bytes ->
+       let debug =
+             if False
+               then "\n" ++ show bytes
+               else ""
+           lhs = intercalate "\n" . map ((prefix ++ " ") ++) . lines
+       in bytes <$
+          logDebug (T.pack ("\n" ++ lhs (binaryView 12 bytes) ++ "\n" ++ debug)))
 
 --------------------------------------------------------------------------------
 -- Complete protocol conduit
 
--- | Consumer of client messages and source of server messages.
-clientMessageSink ::
-     (MonadIO m, MonadLogger m)
-  => Network.AppData
-  -> ConduitT ClientMessage Void m ()
-clientMessageSink app = do
-  mmsg <- await
-  case mmsg of
-    Nothing -> logError "No initial message."
-    Just msg -> do
-      logDebug ("=> " <> T.pack (show msg))
-      case msg of
-        InitialClientMessage endianness ->
-          let streamSettings =
-                StreamSettings {streamSettingsEndianness = endianness}
-          in do runConduit
-                  (yield (ConnectionAccepted defaultInfo) .|
-                   CL.map
-                     (streamBuilderToByteString streamSettings .
-                      buildServerMessage) .|
-                   CL.mapM
-                     (\bytes -> do
-                        logDebug ("=>\n" <> T.pack (binaryView 1 bytes))
-                        pure bytes) .|
-                   Network.appSink app)
-                CL.sinkNull
+-- | Complete client-handling conduit.
+clientConduit ::
+     (MonadLogger m, MonadThrow m) => ConduitT ByteString ByteString m ()
+clientConduit = do
+  streamSettings <- handshakeSink
+  yieldBuiltMessage streamSettings (ConnectionAccepted defaultInfo)
+  requestReplyLoop streamSettings
 
--- | Entry point to the main incoming stream conduit.
-clientMessageConduit ::
-     MonadLogger m => ConduitT ByteString ClientMessage m ()
-clientMessageConduit = do
+-- | Initial handshake with client.
+handshakeSink ::
+     (MonadLogger m, MonadThrow m) => ConduitT ByteString void m StreamSettings
+handshakeSink = do
   endiannessResult <- CA.sinkParserEither endiannessParser
   case endiannessResult of
-    Left _ -> logError "Invalid endianness."
+    Left e -> throwM (InvalidEndianness e)
     Right endianness -> do
-      logDebug ("Endianness: " <> T.pack (show endianness))
+      logDebug ("Received endianness: " <> T.pack (show endianness))
       let streamSettings =
             StreamSettings {streamSettingsEndianness = endianness}
       initResult <-
         CA.sinkParserEither
           (runReaderT (runStreamParser initiationParser) streamSettings)
       case initResult of
-        Left _ -> logError "Invalid initiation message."
+        Left e -> throwM (InvalidInitiationMessage e)
         Right version -> do
           logDebug
             ("Received initiation message. Protocol version: " <>
              T.pack (show version))
-          yield (InitialClientMessage endianness)
-          CL.sinkNull
+          pure streamSettings
+
+-- | The request/reply loop.
+requestReplyLoop ::
+     (MonadLogger m, MonadThrow m)
+  => StreamSettings
+  -> ConduitT ByteString ByteString m ()
+requestReplyLoop streamSettings = do
+  logDebug "Starting request/reply loop."
+  queryResult <-
+    CA.sinkParserEither
+      (runReaderT (runStreamParser queryExtensionParser) streamSettings)
+  case queryResult of
+    Left e -> throwM (InvalidRequest e)
+    Right extensionName -> do
+      logInfo ("Client queried extension: " <> T.pack (show extensionName))
+
+--------------------------------------------------------------------------------
+-- Communication facilities
+
+-- | Yield a single built message downstream.
+yieldBuiltMessage ::
+     Monad m => StreamSettings -> ServerMessage -> ConduitM void ByteString m ()
+yieldBuiltMessage streamSettings msg =
+  yield msg .| buildMessagesConduit streamSettings
+
+-- | A conduit that builds messages into bytes.
+buildMessagesConduit ::
+     Monad m => StreamSettings -> ConduitT ServerMessage ByteString m ()
+buildMessagesConduit streamSettings =
+  CL.map (streamBuilderToByteString streamSettings . buildServerMessage)
 
 --------------------------------------------------------------------------------
 -- Initial server info

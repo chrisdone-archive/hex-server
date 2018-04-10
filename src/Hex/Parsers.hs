@@ -1,6 +1,10 @@
 -- | Parsers of client messages.
 
-module Hex.Parsers where
+module Hex.Parsers
+  (endiannessParser
+  ,initiationParser
+  ,queryExtensionParser)
+  where
 
 import           Control.Monad.Trans
 import           Control.Monad.Trans.Reader
@@ -36,11 +40,7 @@ endiannessParser = Atto.choice [most, least] <* unused
     unused = void Atto.anyWord8
 
 --------------------------------------------------------------------------------
--- Parsers for X11-protocol-specific types
-
--- | An unused number of bytes.
-unusedParser :: Int -> StreamParser ()
-unusedParser n = StreamParser (lift (void (Atto.take n)))
+-- Initiation parsers
 
 -- | Parse minor/major versions.
 protocolVersionParser :: StreamParser Version
@@ -60,6 +60,27 @@ initiationParser = do
   _authData <- stringParser authDataLen
   pure version
 
+--------------------------------------------------------------------------------
+-- Requests
+
+-- | QueryExtension: This request determines if the named extension is
+-- present.
+queryExtensionParser :: StreamParser ByteString
+queryExtensionParser = do
+  byteParser 98
+  unusedParser 1
+  _reqlen <- card16Parser
+  nameLen <- stringLengthParser
+  unusedParser 2
+  stringParser nameLen
+
+--------------------------------------------------------------------------------
+-- Parsers for X11-protocol-specific types
+
+-- | An unused number of bytes.
+unusedParser :: Int -> StreamParser ()
+unusedParser n = StreamParser (lift (void (Atto.take n)))
+
 -- | Parse a length of a string.
 stringLengthParser :: StreamParser Word16
 stringLengthParser = card16Parser
@@ -68,6 +89,10 @@ stringLengthParser = card16Parser
 stringParser :: Word16 -> StreamParser ByteString
 stringParser len =
   StreamParser (lift (fmap (S.take (fromIntegral len)) (Atto.take (pad len))))
+
+-- | An byte number of bytes.
+byteParser :: Word8 -> StreamParser ()
+byteParser n = StreamParser (lift (void (Atto.word8 n)))
 
 -- | Parse a 16-bit word with the right endianness.
 card16Parser :: StreamParser Word16
