@@ -63,6 +63,7 @@ data ClientMessage
   = QueryExtension !ByteString
   | CreateGC
   | GetProperty
+  | CreateWindow
   deriving (Show, Eq, Ord)
 
 -- | Some message from the server to the client.

@@ -68,7 +68,7 @@ initiationParser = do
 requestParser :: StreamParser ClientMessage
 requestParser =
   (QueryExtension <$> queryExtensionParser) <|> (CreateGC <$ createGCParser) <|>
-  (GetProperty <$ getPropertyParser)
+  (GetProperty <$ getPropertyParser) <|> (CreateWindow <$ createWindowParser)
 
 -- | QueryExtension: This request determines if the named extension is
 -- present.
@@ -94,6 +94,14 @@ getPropertyParser :: StreamParser ()
 getPropertyParser = do
   byteParser 20
   unusedParser 1 -- TODO: delete
+  reqlen <- remainingRequestLength
+  unusedParser reqlen
+
+-- | CreateWindow.
+createWindowParser :: StreamParser ()
+createWindowParser = do
+  byteParser 1
+  unusedParser 1 -- depth
   reqlen <- remainingRequestLength
   unusedParser reqlen
 

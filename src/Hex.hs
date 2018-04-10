@@ -143,6 +143,9 @@ dispatchRequest streamSettings sn =
       logInfo "Client asked for a property. Returning None."
       yieldBuiltMessage streamSettings (PropertyValue sn)
       pure Continue
+    CreateWindow -> do
+      logInfo "Client asked to create a window. Doing nothing."
+      pure Continue
 
 --------------------------------------------------------------------------------
 -- Communication facilities
