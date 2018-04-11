@@ -27,6 +27,7 @@ import           Data.Monoid
 import qualified Data.Text as T
 import           Data.Word
 import           Hex.Builders
+import           Hex.Constants
 import           Hex.Parsers
 import           Hex.Types
 
@@ -133,8 +134,17 @@ dispatchRequest ::
 dispatchRequest streamSettings sn =
   \case
     QueryExtension extensionName -> do
-      logInfo ("Client queried extension: " <> T.pack (show extensionName))
-      yieldBuiltMessage streamSettings (UnsupportedExtension sn)
+      case extensionName of
+        "XC-MISC" -> do
+          logInfo
+            ("Client queried supported extension: " <>
+             T.pack (show extensionName))
+          yieldBuiltMessage streamSettings (SupportedExtension sn xcMiscOpcode)
+        _ -> do
+          logInfo
+            ("Client queried unsupported extension: " <>
+             T.pack (show extensionName))
+          yieldBuiltMessage streamSettings (UnsupportedExtension sn)
       pure Continue
     CreateGC -> do
       logInfo "Client asked to create a graphics context. Ignoring."
@@ -145,6 +155,10 @@ dispatchRequest streamSettings sn =
       pure Continue
     CreateWindow -> do
       logInfo "Client asked to create a window. Doing nothing."
+      pure Continue
+    XCMiscGetXIDRange -> do
+      logInfo "Client asked for the ID range."
+      yieldBuiltMessage streamSettings (XIDRange sn)
       pure Continue
 
 --------------------------------------------------------------------------------
@@ -206,15 +220,3 @@ defaultInfo =
       ]
   , infoVersion = Version {versionMajor = 11, versionMinor = 0}
   }
-
---------------------------------------------------------------------------------
--- Constants
-
--- | The X11 range of ports. From <https://wiki.wireshark.org/X11>
---
--- > TCP: X11 uses TCP as its transport protocol. The well known TCP
--- > ports for X11 are 6000-6063: typically the port number used is 6000
--- > plus the server/display number.
---
-x11PortRange :: (Int, Int)
-x11PortRange = (6000, 6063)

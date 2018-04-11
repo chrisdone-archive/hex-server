@@ -37,6 +37,7 @@ library
     Hex.Types
     Hex.Parsers
     Hex.Builders
+    Hex.Constants
     BinaryView
   build-depends:
     base,

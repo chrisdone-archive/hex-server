@@ -35,6 +35,17 @@ buildServerMessage =
         , buildUnused 3
         , buildUnused 20
         ]
+    SupportedExtension sid majorOpcode ->
+      mconcat
+        [ buildWord8 1
+        , buildUnused 1
+        , buildWord16 (coerce sid)
+        , buildWord32 0
+        , buildEnum8 True
+        , buildWord8 (coerce (majorOpcode))
+        , buildUnused 2
+        , buildUnused 20
+        ]
     PropertyValue sid ->
       mconcat
         [ buildWord8 1
@@ -46,6 +57,17 @@ buildServerMessage =
         , buildWord32 0 -- value length
         , buildUnused 12
         ]
+    XIDRange sid ->
+      mconcat
+        [ buildWord8 1
+        , buildUnused 1
+        , buildWord16 (coerce sid)
+        , buildWord32 0
+        , buildWord32 startId
+        , buildWord32 maxBound
+        , buildUnused 16
+        ]
+      where startId = 1 -- (Must be >0, Xlib expects this.)
 
 buildInfo :: Info -> StreamBuilder
 buildInfo info =

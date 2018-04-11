@@ -64,6 +64,7 @@ data ClientMessage
   | CreateGC
   | GetProperty
   | CreateWindow
+  | XCMiscGetXIDRange
   deriving (Show, Eq, Ord)
 
 -- | Some message from the server to the client.
@@ -71,6 +72,8 @@ data ServerMessage
   = ConnectionAccepted !Info
   | UnsupportedExtension !SequenceNumber
   | PropertyValue !SequenceNumber
+  | SupportedExtension !SequenceNumber !Opcode
+  | XIDRange !SequenceNumber
   deriving (Show, Eq, Ord)
 
 -- | Info sent from the server upon successful connection.
@@ -211,4 +214,8 @@ data SetupResult
 
 newtype SequenceNumber = SequenceNumber
   { sequenceNumber :: Word16
+  } deriving (Show, Eq, Ord, Num, Integral, Real, Enum)
+
+newtype Opcode = Opcode
+  { opcode :: Word8
   } deriving (Show, Eq, Ord, Num, Integral, Real, Enum)

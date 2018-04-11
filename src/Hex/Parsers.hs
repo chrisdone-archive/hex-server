@@ -15,8 +15,10 @@ import           Data.Attoparsec.ByteString.Char8 (Parser)
 import qualified Data.Attoparsec.ByteString.Char8 as Atto8
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as S
+import           Data.Coerce
 import           Data.Functor
 import           Data.Word
+import           Hex.Constants
 import           Hex.Types
 
 --------------------------------------------------------------------------------
@@ -68,13 +70,15 @@ initiationParser = do
 requestParser :: StreamParser ClientMessage
 requestParser =
   (QueryExtension <$> queryExtensionParser) <|> (CreateGC <$ createGCParser) <|>
-  (GetProperty <$ getPropertyParser) <|> (CreateWindow <$ createWindowParser)
+  (GetProperty <$ getPropertyParser) <|>
+  (CreateWindow <$ createWindowParser) <|>
+  (XCMiscGetXIDRange <$ xcMiscGetXIDRangeParser)
 
 -- | QueryExtension: This request determines if the named extension is
 -- present.
 queryExtensionParser :: StreamParser ByteString
 queryExtensionParser = do
-  byteParser 98
+  opcodeParser8 queryExtensionOpcode
   unusedParser 1
   _reqlen <- remainingRequestLength
   nameLen <- stringLengthParser
@@ -84,7 +88,7 @@ queryExtensionParser = do
 -- | CreateGC.
 createGCParser :: StreamParser ()
 createGCParser = do
-  byteParser 55
+  opcodeParser8 createGCOpcode
   unusedParser 1
   reqlen <- remainingRequestLength
   unusedParser reqlen
@@ -92,7 +96,7 @@ createGCParser = do
 -- | GetProperty.
 getPropertyParser :: StreamParser ()
 getPropertyParser = do
-  byteParser 20
+  opcodeParser8 getPropertyOpcode
   unusedParser 1 -- TODO: delete
   reqlen <- remainingRequestLength
   unusedParser reqlen
@@ -100,10 +104,17 @@ getPropertyParser = do
 -- | CreateWindow.
 createWindowParser :: StreamParser ()
 createWindowParser = do
-  byteParser 1
+  opcodeParser8 createWindowOpcode
   unusedParser 1 -- depth
   reqlen <- remainingRequestLength
   unusedParser reqlen
+
+-- | XCMiscGetXIDRange.
+xcMiscGetXIDRangeParser :: StreamParser ()
+xcMiscGetXIDRangeParser = do
+  opcodeParser8 xcMiscOpcode
+  opcodeParser8 xcMiscGetXIDRangeOpcode
+  unusedParser 2
 
 --------------------------------------------------------------------------------
 -- Parsers for X11-protocol-specific types
@@ -130,8 +141,8 @@ stringParser len =
   StreamParser (lift (fmap (S.take (fromIntegral len)) (Atto.take (pad len))))
 
 -- | An byte number of bytes.
-byteParser :: Word8 -> StreamParser ()
-byteParser n = StreamParser (lift (void (Atto.word8 n)))
+opcodeParser8 :: Opcode -> StreamParser ()
+opcodeParser8 n = StreamParser (lift (void (Atto.word8 (coerce n))))
 
 -- | Parse a 16-bit word with the right endianness.
 card16Parser :: StreamParser Word16
