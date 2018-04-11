@@ -12,9 +12,20 @@ import           Data.Attoparsec.ByteString (Parser)
 import           Data.ByteString (ByteString)
 import           Data.ByteString.Lazy.Builder (Builder)
 import qualified Data.Conduit.Attoparsec as CA
+import           Data.HashMap.Strict (HashMap)
+import           Data.Hashable (Hashable)
 import           Data.Set (Set)
 import           Data.Typeable
 import           Data.Word
+
+--------------------------------------------------------------------------------
+-- Client state
+
+-- | State for each client.
+data ClientState = ClientState
+  { clientStateSequenceNumber :: !SequenceNumber
+  , clientStateAtoms :: !(HashMap AtomID ByteString)
+  } deriving (Show)
 
 --------------------------------------------------------------------------------
 -- Parsers and printers
@@ -65,6 +76,7 @@ data ClientMessage
   | GetProperty
   | CreateWindow
   | XCMiscGetXIDRange
+  | InternAtom !ByteString !Bool
   deriving (Show, Eq, Ord)
 
 -- | Some message from the server to the client.
@@ -74,6 +86,7 @@ data ServerMessage
   | PropertyValue !SequenceNumber
   | SupportedExtension !SequenceNumber !Opcode
   | XIDRange !SequenceNumber
+  | AtomInterned !SequenceNumber !AtomID
   deriving (Show, Eq, Ord)
 
 -- | Info sent from the server upon successful connection.
@@ -181,6 +194,10 @@ data ColorClass
 newtype ResourceID = ResourceID
   { resourceID :: Word32
   } deriving (Show, Eq, Ord)
+
+newtype AtomID = AtomID
+  { atomID :: Word32
+  } deriving (Show, Eq, Ord, Hashable, Num, Real, Enum)
 
 newtype WindowID = WindowID
   { windowID :: ResourceID

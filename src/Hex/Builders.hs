@@ -68,6 +68,15 @@ buildServerMessage =
         , buildUnused 16
         ]
       where startId = 1 -- (Must be >0, Xlib expects this.)
+    AtomInterned sid aid ->
+      mconcat
+        [ buildWord8 1
+        , buildUnused 1
+        , buildWord16 (coerce sid)
+        , buildUnused 4
+        , buildWord32 (coerce aid)
+        , buildUnused 20
+        ]
 
 buildInfo :: Info -> StreamBuilder
 buildInfo info =

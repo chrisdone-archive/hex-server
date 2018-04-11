@@ -72,7 +72,8 @@ requestParser =
   (QueryExtension <$> queryExtensionParser) <|> (CreateGC <$ createGCParser) <|>
   (GetProperty <$ getPropertyParser) <|>
   (CreateWindow <$ createWindowParser) <|>
-  (XCMiscGetXIDRange <$ xcMiscGetXIDRangeParser)
+  (XCMiscGetXIDRange <$ xcMiscGetXIDRangeParser) <|>
+  (uncurry InternAtom <$> internAtomParser)
 
 -- | QueryExtension: This request determines if the named extension is
 -- present.
@@ -116,6 +117,17 @@ xcMiscGetXIDRangeParser = do
   opcodeParser8 xcMiscGetXIDRangeOpcode
   unusedParser 2
 
+-- | XCMiscGetXIDRange.
+internAtomParser :: StreamParser (ByteString, Bool)
+internAtomParser = do
+  opcodeParser8 internAtomOpcode
+  onlyIfExists <- enumParser
+  _len <- remainingRequestLength
+  nameLen <- stringLengthParser
+  unusedParser 2
+  name <- stringParser nameLen
+  pure (name, onlyIfExists)
+
 --------------------------------------------------------------------------------
 -- Parsers for X11-protocol-specific types
 
@@ -139,6 +151,11 @@ stringLengthParser = card16Parser
 stringParser :: Word16 -> StreamParser ByteString
 stringParser len =
   StreamParser (lift (fmap (S.take (fromIntegral len)) (Atto.take (pad len))))
+
+-- | Parse a string, including padding.
+enumParser :: Enum e => StreamParser e
+enumParser =
+  StreamParser (lift (fmap (toEnum . fromIntegral) (Atto.anyWord8))) -- TODO: Safe toEnum.
 
 -- | An byte number of bytes.
 opcodeParser8 :: Opcode -> StreamParser ()

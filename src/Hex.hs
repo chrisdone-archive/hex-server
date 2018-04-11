@@ -17,11 +17,13 @@ import           Control.Monad.Logger.CallStack (logError, logDebug, logInfo, Mo
 import           Control.Monad.Trans.Reader
 import qualified Data.Attoparsec.ByteString as Atto
 import           Data.ByteString (ByteString)
+import           Data.Coerce
 import           Data.Conduit
 import           Data.Conduit (runConduit, (.|))
 import qualified Data.Conduit.Attoparsec as CA
 import qualified Data.Conduit.List as CL
 import qualified Data.Conduit.Network as Network
+import qualified Data.HashMap.Strict as HM
 import           Data.List
 import           Data.Monoid
 import qualified Data.Text as T
@@ -95,9 +97,6 @@ handshakeSink = do
              T.pack (show version))
           pure streamSettings
 
--- | Result of a request dispatch.
-data DispatchResult = Continue | Done
-
 -- | The request/reply loop.
 requestReplyLoop ::
      (MonadLogger m, MonadThrow m)
@@ -105,7 +104,7 @@ requestReplyLoop ::
   -> ConduitT ByteString ByteString m ()
 requestReplyLoop streamSettings = do
   logDebug "Starting request/reply loop."
-  let loop sn = do
+  let loop clientState = do
         requestResult <-
           CA.sinkParserEither
             (fmap
@@ -118,25 +117,29 @@ requestReplyLoop streamSettings = do
             case parsed of
               Nothing -> logDebug "End of input stream."
               Just request -> do
-                result <- dispatchRequest streamSettings sn request
+                result <- dispatchRequest streamSettings clientState request
                 case result of
-                  Done -> logDebug "Closing client connection."
-                  Continue -> loop (sn + 1)
-  loop 1
+                  Nothing -> logDebug "Closing client connection."
+                  Just clientState' -> loop clientState'
+  loop
+    (ClientState
+     { clientStateSequenceNumber = initialSequenceNumber
+     , clientStateAtoms = predefinedAtoms
+     })
 
 -- | Dispatch on the client request.
 dispatchRequest ::
      (MonadLogger m, MonadThrow m)
   => StreamSettings
-  -> SequenceNumber
+  -> ClientState
   -> ClientMessage
-  -> ConduitT i ByteString m DispatchResult
-dispatchRequest streamSettings sn =
+  -> ConduitT i ByteString m (Maybe ClientState)
+dispatchRequest streamSettings clientState =
   \case
     QueryExtension extensionName -> do
       case extensionName of
         "XC-MISC" -> do
-          logInfo
+          logDebug
             ("Client queried supported extension: " <>
              T.pack (show extensionName))
           yieldBuiltMessage streamSettings (SupportedExtension sn xcMiscOpcode)
@@ -145,21 +148,36 @@ dispatchRequest streamSettings sn =
             ("Client queried unsupported extension: " <>
              T.pack (show extensionName))
           yieldBuiltMessage streamSettings (UnsupportedExtension sn)
-      pure Continue
+      pure continue
     CreateGC -> do
-      logInfo "Client asked to create a graphics context. Ignoring."
-      pure Continue
+      logDebug "Client asked to create a graphics context. Ignoring."
+      pure continue
     GetProperty -> do
-      logInfo "Client asked for a property. Returning None."
+      logDebug "Client asked for a property. Returning None."
       yieldBuiltMessage streamSettings (PropertyValue sn)
-      pure Continue
+      pure continue
     CreateWindow -> do
       logInfo "Client asked to create a window. Doing nothing."
-      pure Continue
+      pure continue
     XCMiscGetXIDRange -> do
-      logInfo "Client asked for the ID range."
+      logDebug "Client asked for the ID range."
       yieldBuiltMessage streamSettings (XIDRange sn)
-      pure Continue
+      pure continue
+    InternAtom name _onlyIfExists -> do
+      logDebug ("Request to intern atom: " <> T.pack (show name))
+      let atomId =
+            coerce
+              (fromIntegral (HM.size (clientStateAtoms clientState) + 1) :: Word32)
+          atoms = HM.insert atomId name (clientStateAtoms clientState)
+      logDebug ("Interned to: " <> T.pack (show atomId))
+      yieldBuiltMessage streamSettings (AtomInterned sn atomId)
+      pure (fmap (\s -> s {clientStateAtoms = atoms}) continue)
+  where
+    sn = clientStateSequenceNumber clientState
+    continue =
+      Just
+        (clientState
+         {clientStateSequenceNumber = clientStateSequenceNumber clientState + 1})
 
 --------------------------------------------------------------------------------
 -- Communication facilities
