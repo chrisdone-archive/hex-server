@@ -117,7 +117,7 @@ xcMiscGetXIDRangeParser = do
   opcodeParser8 xcMiscGetXIDRangeOpcode
   unusedParser 2
 
--- | XCMiscGetXIDRange.
+-- | InternAtom.
 internAtomParser :: StreamParser (ByteString, Bool)
 internAtomParser = do
   opcodeParser8 internAtomOpcode
