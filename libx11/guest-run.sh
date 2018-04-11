@@ -9,4 +9,4 @@
 # echo running x11
 # ./x11-bin
 
-DISPLAY=192.168.1.102:0 emacs
+DISPLAY=192.168.1.102:0 chromium --no-sandbox --disable-gpu

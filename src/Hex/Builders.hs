@@ -164,6 +164,9 @@ buildVisual v =
     , buildWord8 (visualBitsPerRgbValue v)
     , buildWord16 (visualColormapEntries v)
     , buildWord32 (visualRedMask v)
+    , buildWord32 (visualGreenMask v)
+    , buildWord32 (visualBlueMask v)
+    , buildUnused 4
     ]
 
 buildEventSet :: Set Event -> StreamBuilder

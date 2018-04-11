@@ -235,12 +235,26 @@ defaultInfo =
         , screenHeightInMillimeters = 768
         , screenMinInstalledMaps = 1
         , screenMaxInstalledMaps = 1
-        , screenRootVisual = VisualID (ResourceID 0)
+        , screenRootVisual = visual
         , screenBackingStores = Never
         , screenSaveUnders = False
         , screenRootDepth = 32
-        , screenAllowedDepths = [Depth 32 []]
+        , screenAllowedDepths =
+            [ Depth
+                32
+                [ Visual
+                  { visualId = visual
+                  , visualClass = TrueColor
+                  , visualBitsPerRgbValue = 8
+                  , visualColormapEntries = 256
+                  , visualRedMask = 0x00ff0000
+                  , visualGreenMask = 0x0000ff00
+                  , visualBlueMask = 0x000000ff
+                  }
+                ]
+            ]
         }
       ]
   , infoVersion = Version {versionMajor = 11, versionMinor = 0}
   }
+  where visual = VisualID (ResourceID 0)

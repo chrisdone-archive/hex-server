@@ -182,6 +182,8 @@ data Visual = Visual
   , visualBitsPerRgbValue :: Word8
   , visualColormapEntries :: Word16
   , visualRedMask :: Word32
+  , visualGreenMask :: Word32
+  , visualBlueMask :: Word32
   } deriving (Show, Eq, Ord)
 
 data ColorClass
