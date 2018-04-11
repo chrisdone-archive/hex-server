@@ -72,6 +72,7 @@ requestParser =
   choice
     [ QueryExtension <$> queryExtensionParser
     , CreateGC <$ createGCParser
+    , FreeGC <$ freeGCParser
     , GetProperty <$ getPropertyParser
     , CreateWindow <$ createWindowParser
     , XCMiscGetXIDRange <$ xcMiscGetXIDRangeParser
@@ -99,6 +100,14 @@ createGCParser = do
   unusedParser 1
   reqlen <- remainingRequestLength
   unusedParser reqlen
+
+-- | FreeGC.
+freeGCParser :: StreamParser ()
+freeGCParser = do
+  opcodeParser8 freeGCOpcode
+  unusedParser 1
+  _reqlen <- remainingRequestLength
+  unusedParser 4
 
 -- | GetProperty.
 getPropertyParser :: StreamParser ()

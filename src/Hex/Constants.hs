@@ -33,6 +33,9 @@ queryExtensionOpcode = 98
 createGCOpcode :: Opcode
 createGCOpcode = 55
 
+freeGCOpcode :: Opcode
+freeGCOpcode = 60
+
 getPropertyOpcode :: Opcode
 getPropertyOpcode = 20
 

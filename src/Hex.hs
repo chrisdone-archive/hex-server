@@ -40,7 +40,7 @@ import           Hex.Types
 runServer :: (MonadLogger m, MonadUnliftIO m, MonadCatch m) => m ()
 runServer =
   Network.runGeneralTCPServer
-    (Network.serverSettings (fst x11PortRange) "127.0.0.1")
+    (Network.serverSettings (fst x11PortRange) "*")
     (\app -> do
        logInfo ("New client: " <> T.pack (show (Network.appSockAddr app)))
        catch
@@ -151,6 +151,9 @@ dispatchRequest streamSettings clientState =
       pure continue
     CreateGC -> do
       logDebug "Client asked to create a graphics context. Ignoring."
+      pure continue
+    FreeGC -> do
+      logDebug "Client asked to free a graphics context. Ignoring."
       pure continue
     GetProperty -> do
       logDebug "Client asked for a property. Returning None."

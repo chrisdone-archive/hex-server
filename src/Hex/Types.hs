@@ -73,6 +73,7 @@ instance Exception ClientException where
 data ClientMessage
   = QueryExtension !ByteString
   | CreateGC
+  | FreeGC
   | GetProperty
   | CreateWindow
   | XCMiscGetXIDRange
