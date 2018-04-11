@@ -36,6 +36,9 @@ createGCOpcode = 55
 getPropertyOpcode :: Opcode
 getPropertyOpcode = 20
 
+changePropertyOpcode :: Opcode
+changePropertyOpcode = 18
+
 createWindowOpcode :: Opcode
 createWindowOpcode = 1
 

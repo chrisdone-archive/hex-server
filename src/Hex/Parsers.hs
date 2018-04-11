@@ -69,11 +69,17 @@ initiationParser = do
 -- | Parse client requests.
 requestParser :: StreamParser ClientMessage
 requestParser =
-  (QueryExtension <$> queryExtensionParser) <|> (CreateGC <$ createGCParser) <|>
-  (GetProperty <$ getPropertyParser) <|>
-  (CreateWindow <$ createWindowParser) <|>
-  (XCMiscGetXIDRange <$ xcMiscGetXIDRangeParser) <|>
-  (uncurry InternAtom <$> internAtomParser)
+  choice
+    [ QueryExtension <$> queryExtensionParser
+    , CreateGC <$ createGCParser
+    , GetProperty <$ getPropertyParser
+    , CreateWindow <$ createWindowParser
+    , XCMiscGetXIDRange <$ xcMiscGetXIDRangeParser
+    , uncurry InternAtom <$> internAtomParser
+    , ChangeProperty <$ changePropertyParser
+    ]
+  where
+    choice = foldr (<|>) (fail "Unknown message type.")
 
 -- | QueryExtension: This request determines if the named extension is
 -- present.
@@ -127,6 +133,14 @@ internAtomParser = do
   unusedParser 2
   name <- stringParser nameLen
   pure (name, onlyIfExists)
+
+-- | ChangePropertyParser.
+changePropertyParser :: StreamParser ()
+changePropertyParser = do
+  opcodeParser8 changePropertyOpcode
+  unusedParser 1 -- mode
+  reqlen <- remainingRequestLength
+  unusedParser reqlen
 
 --------------------------------------------------------------------------------
 -- Parsers for X11-protocol-specific types

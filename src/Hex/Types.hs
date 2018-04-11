@@ -77,6 +77,7 @@ data ClientMessage
   | CreateWindow
   | XCMiscGetXIDRange
   | InternAtom !ByteString !Bool
+  | ChangeProperty
   deriving (Show, Eq, Ord)
 
 -- | Some message from the server to the client.

@@ -172,6 +172,9 @@ dispatchRequest streamSettings clientState =
       logDebug ("Interned to: " <> T.pack (show atomId))
       yieldBuiltMessage streamSettings (AtomInterned sn atomId)
       pure (fmap (\s -> s {clientStateAtoms = atoms}) continue)
+    ChangeProperty -> do
+      logDebug "Client requested to change property. Doing nothing."
+      pure continue
   where
     sn = clientStateSequenceNumber clientState
     continue =
