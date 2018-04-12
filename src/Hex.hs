@@ -162,6 +162,9 @@ dispatchRequest streamSettings clientState =
     CreateWindow -> do
       logInfo "Client asked to create a window. Doing nothing."
       pure continue
+    MapWindow -> do
+      logInfo "Client asked to map a window. Doing nothing."
+      pure continue
     XCMiscGetXIDRange -> do
       logDebug "Client asked for the ID range."
       reply (XIDRange sn)
@@ -185,6 +188,10 @@ dispatchRequest streamSettings clientState =
       logDebug "Client queried colors. Sending back colors."
       reply (ColorsQueried sn)
       pure continue
+    QueryPointer -> do
+      logDebug "Client queried pointer. Sending back pointer."
+      reply (PointerQueried sn)
+      pure continue
     GetWindowAttributes -> do
       logDebug "Client requested window attributes."
       reply (WindowAttributes sn)
@@ -192,6 +199,16 @@ dispatchRequest streamSettings clientState =
     GetGeometry -> do
       logDebug "Geometry requested."
       reply (GeometryGot sn)
+      pure continue
+    GrabServer -> do
+      logDebug "Client grabbed server."
+      pure continue
+    UngrabServer -> do
+      logDebug "Client ungrabbed server."
+      pure continue
+    GetSelectionOwner -> do
+      logDebug "Client requested selection owner."
+      reply (SelectionOwner sn)
       pure continue
   where
     sn = clientStateSequenceNumber clientState

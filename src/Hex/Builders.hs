@@ -36,6 +36,15 @@ buildServerMessage =
         , buildUnused 3
         , buildUnused 20
         ]
+    SelectionOwner sid ->
+      mconcat
+        [ buildWord8 1
+        , buildUnused 1
+        , buildWord16 (coerce sid)
+        , buildWord32 0
+        , buildWord32 0
+        , buildUnused 20
+        ]
     SupportedExtension sid majorOpcode ->
       mconcat
         [ buildWord8 1
@@ -130,6 +139,21 @@ buildServerMessage =
             buildRGB (RGB r g b) =
               mconcat
                 [buildWord16 r, buildWord16 g, buildWord16 b, buildUnused 2]
+    PointerQueried sid ->
+      mconcat
+        [ buildWord8 1
+        , buildEnum8 True
+        , buildWord16 (coerce sid)
+        , buildWord32 0
+        , buildWord32 0
+        , buildWord32 0
+        , buildWord16 0 -- x
+        , buildWord16 0 -- y
+        , buildWord16 0 -- wx
+        , buildWord16 0 -- wy
+        , buildUnused 2
+        , buildUnused 6
+        ]
 
 buildInfo :: Info -> StreamBuilder
 buildInfo info =

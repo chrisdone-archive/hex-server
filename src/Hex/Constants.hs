@@ -51,8 +51,23 @@ getWindowAttributesOpcode = 3
 createWindowOpcode :: Opcode
 createWindowOpcode = 1
 
+mapWindowOpcode :: Opcode
+mapWindowOpcode = 8
+
 queryColorsOpcode :: Opcode
 queryColorsOpcode = 91
+
+queryPointerOpcode :: Opcode
+queryPointerOpcode = 38
+
+grabServerOpcode :: Opcode
+grabServerOpcode = 36
+
+ungrabServerOpcode :: Opcode
+ungrabServerOpcode = 37
+
+getSelectionOwnerOpcode :: Opcode
+getSelectionOwnerOpcode = 23
 
 getGeometryOpcode :: Opcode
 getGeometryOpcode = 14

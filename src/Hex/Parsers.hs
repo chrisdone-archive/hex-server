@@ -75,13 +75,18 @@ requestParser =
     , FreeGC <$ freeGCParser
     , GetProperty <$ getPropertyParser
     , CreateWindow <$ createWindowParser
+    , MapWindow <$ mapWindowParser
     , XCMiscGetXIDRange <$ xcMiscGetXIDRangeParser
     , uncurry InternAtom <$> internAtomParser
     , ChangeProperty <$ changePropertyParser
     , ChangeWindowAttributes <$ changeWindowAttributesParser
     , GetWindowAttributes <$ getWindowAttributesParser
     , QueryColors <$ queryColorsParser
+    , QueryPointer <$ queryPointerParser
     , GetGeometry <$ getGeometryParser
+    , GrabServer <$ grabServerParser
+    , UngrabServer <$ ungrabServerParser
+    , GetSelectionOwner <$ getSelectionOwnerParser
     ]
   where
     choice = foldr (<|>) (fail "Unknown message type.")
@@ -129,6 +134,14 @@ createWindowParser = do
   reqlen <- remainingRequestLength
   unusedParser reqlen
 
+-- | MapWindow.
+mapWindowParser :: StreamParser ()
+mapWindowParser = do
+  opcodeParser8 mapWindowOpcode
+  unusedParser 1 -- depth
+  _reqlen <- remainingRequestLength
+  unusedParser 4
+
 -- | XCMiscGetXIDRange.
 xcMiscGetXIDRangeParser :: StreamParser ()
 xcMiscGetXIDRangeParser = do
@@ -147,7 +160,7 @@ internAtomParser = do
   name <- stringParser nameLen
   pure (name, onlyIfExists)
 
--- | ChangePropertyParser.
+-- | ChangeProperty.
 changePropertyParser :: StreamParser ()
 changePropertyParser = do
   opcodeParser8 changePropertyOpcode
@@ -155,7 +168,7 @@ changePropertyParser = do
   reqlen <- remainingRequestLength
   unusedParser reqlen
 
--- | ChangeWindowAttributesParser.
+-- | ChangeWindowAttributes.
 changeWindowAttributesParser :: StreamParser ()
 changeWindowAttributesParser = do
   opcodeParser8 changeWindowAttributesOpcode
@@ -163,7 +176,7 @@ changeWindowAttributesParser = do
   reqlen <- remainingRequestLength
   unusedParser reqlen
 
--- | GetWindowAttributesParser.
+-- | GetWindowAttributes.
 getWindowAttributesParser :: StreamParser ()
 getWindowAttributesParser = do
   opcodeParser8 getWindowAttributesOpcode
@@ -171,7 +184,7 @@ getWindowAttributesParser = do
   reqlen <- remainingRequestLength
   unusedParser reqlen
 
--- | QueryColorsParser.
+-- | QueryColors.
 queryColorsParser :: StreamParser ()
 queryColorsParser = do
   opcodeParser8 queryColorsOpcode
@@ -179,12 +192,42 @@ queryColorsParser = do
   reqlen <- remainingRequestLength
   unusedParser reqlen
 
--- | GetGeometryParser.
+-- | QueryPointer.
+queryPointerParser :: StreamParser ()
+queryPointerParser = do
+  opcodeParser8 queryPointerOpcode
+  unusedParser 1
+  _reqlen <- remainingRequestLength
+  unusedParser 4
+
+-- | GetGeometry.
 getGeometryParser :: StreamParser ()
 getGeometryParser = do
   opcodeParser8 getGeometryOpcode
   unusedParser 1
   _reqlen <- remainingRequestLength
+  unusedParser 4
+
+-- | GrabServer.
+grabServerParser :: StreamParser ()
+grabServerParser = do
+  opcodeParser8 grabServerOpcode
+  unusedParser 1
+  void remainingRequestLength
+
+-- | UngrabServer.
+ungrabServerParser :: StreamParser ()
+ungrabServerParser = do
+  opcodeParser8 ungrabServerOpcode
+  unusedParser 1
+  void remainingRequestLength
+
+-- | GetSelectionOwner.
+getSelectionOwnerParser :: StreamParser ()
+getSelectionOwnerParser = do
+  opcodeParser8 getSelectionOwnerOpcode
+  unusedParser 1
+  void remainingRequestLength
   unusedParser 4
 
 --------------------------------------------------------------------------------
