@@ -81,6 +81,8 @@ data ClientMessage
   | ChangeProperty
   | ChangeWindowAttributes
   | QueryColors
+  | GetWindowAttributes
+  | GetGeometry
   deriving (Show, Eq, Ord)
 
 -- | Some message from the server to the client.
@@ -92,6 +94,8 @@ data ServerMessage
   | XIDRange !SequenceNumber
   | AtomInterned !SequenceNumber !AtomID
   | ColorsQueried !SequenceNumber
+  | WindowAttributes !SequenceNumber
+  | GeometryGot !SequenceNumber
   deriving (Show, Eq, Ord)
 
 data RGB = RGB !Word16 !Word16 !Word16

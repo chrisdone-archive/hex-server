@@ -78,6 +78,42 @@ buildServerMessage =
         , buildWord32 (coerce aid)
         , buildUnused 20
         ]
+    WindowAttributes sid ->
+      mconcat
+        [ buildWord8 1
+        , buildUnused 1 -- Backing store.
+        , buildWord16 (coerce sid)
+        , buildWord32 3 -- len
+        , buildWord32 0 -- visual
+        , buildWord16 2
+        , buildWord8 0
+        , buildWord8 0
+        , buildWord32 0
+        , buildWord32 0
+        , buildEnum8 False
+        , buildEnum8 True
+        , buildWord8 2 -- viewable
+        , buildEnum8 True
+        , buildWord32 0
+        , buildEventSet mempty
+        , buildEventSet mempty
+        , buildDeviceEventSet mempty
+        , buildUnused 2
+        ]
+    GeometryGot sid ->
+      mconcat
+        [ buildWord8 1
+        , buildUnused 1 --depth
+        , buildWord16 (coerce sid)
+        , buildWord32 0 -- len
+        , buildWord32 0 --root
+        , buildWord16 0 --x
+        , buildWord16 0 --y
+        , buildWord16 1024 --w
+        , buildWord16 768 --h
+        , buildWord16 0
+        , buildUnused 10
+        ]
     ColorsQueried sid ->
       mconcat
         [ buildWord8 1
@@ -89,7 +125,8 @@ buildServerMessage =
         , mconcat (map buildRGB colors)
         ]
       where n = length colors
-            colors = [RGB r g b | r <- [0..255] | g <- [0..255] | b <- [0..255]]
+            colors =
+              [RGB r g b | r <- [0 .. 255] | g <- [0 .. 255] | b <- [0 .. 255]]
             buildRGB (RGB r g b) =
               mconcat
                 [buildWord16 r, buildWord16 g, buildWord16 b, buildUnused 2]
@@ -184,6 +221,9 @@ buildVisual v =
     , buildWord32 (visualBlueMask v)
     , buildUnused 4
     ]
+
+buildDeviceEventSet :: Set Event -> StreamBuilder
+buildDeviceEventSet = buildWord16 . const 0
 
 buildEventSet :: Set Event -> StreamBuilder
 buildEventSet = buildWord32 . foldl (.|.) 0 . map encode . Set.toList

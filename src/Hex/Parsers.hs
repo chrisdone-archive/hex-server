@@ -79,7 +79,9 @@ requestParser =
     , uncurry InternAtom <$> internAtomParser
     , ChangeProperty <$ changePropertyParser
     , ChangeWindowAttributes <$ changeWindowAttributesParser
+    , GetWindowAttributes <$ getWindowAttributesParser
     , QueryColors <$ queryColorsParser
+    , GetGeometry <$ getGeometryParser
     ]
   where
     choice = foldr (<|>) (fail "Unknown message type.")
@@ -161,13 +163,29 @@ changeWindowAttributesParser = do
   reqlen <- remainingRequestLength
   unusedParser reqlen
 
+-- | GetWindowAttributesParser.
+getWindowAttributesParser :: StreamParser ()
+getWindowAttributesParser = do
+  opcodeParser8 getWindowAttributesOpcode
+  unusedParser 1
+  reqlen <- remainingRequestLength
+  unusedParser reqlen
+
 -- | QueryColorsParser.
 queryColorsParser :: StreamParser ()
 queryColorsParser = do
   opcodeParser8 queryColorsOpcode
-  unusedParser 1 -- mode
+  unusedParser 1
   reqlen <- remainingRequestLength
   unusedParser reqlen
+
+-- | GetGeometryParser.
+getGeometryParser :: StreamParser ()
+getGeometryParser = do
+  opcodeParser8 getGeometryOpcode
+  unusedParser 1
+  _reqlen <- remainingRequestLength
+  unusedParser 4
 
 --------------------------------------------------------------------------------
 -- Parsers for X11-protocol-specific types

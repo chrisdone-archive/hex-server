@@ -185,6 +185,14 @@ dispatchRequest streamSettings clientState =
       logDebug "Client queried colors. Sending back colors."
       reply (ColorsQueried sn)
       pure continue
+    GetWindowAttributes -> do
+      logDebug "Client requested window attributes."
+      reply (WindowAttributes sn)
+      pure continue
+    GetGeometry -> do
+      logDebug "Geometry requested."
+      reply (GeometryGot sn)
+      pure continue
   where
     sn = clientStateSequenceNumber clientState
     reply = yieldBuiltMessage streamSettings
