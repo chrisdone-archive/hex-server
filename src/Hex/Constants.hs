@@ -42,8 +42,14 @@ getPropertyOpcode = 20
 changePropertyOpcode :: Opcode
 changePropertyOpcode = 18
 
+changeWindowAttributesOpcode :: Opcode
+changeWindowAttributesOpcode = 2
+
 createWindowOpcode :: Opcode
 createWindowOpcode = 1
+
+queryColorsOpcode :: Opcode
+queryColorsOpcode = 91
 
 xcMiscOpcode :: Opcode
 xcMiscOpcode = 128

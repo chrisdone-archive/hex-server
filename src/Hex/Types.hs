@@ -79,6 +79,8 @@ data ClientMessage
   | XCMiscGetXIDRange
   | InternAtom !ByteString !Bool
   | ChangeProperty
+  | ChangeWindowAttributes
+  | QueryColors
   deriving (Show, Eq, Ord)
 
 -- | Some message from the server to the client.
@@ -89,6 +91,10 @@ data ServerMessage
   | SupportedExtension !SequenceNumber !Opcode
   | XIDRange !SequenceNumber
   | AtomInterned !SequenceNumber !AtomID
+  | ColorsQueried !SequenceNumber
+  deriving (Show, Eq, Ord)
+
+data RGB = RGB !Word16 !Word16 !Word16
   deriving (Show, Eq, Ord)
 
 -- | Info sent from the server upon successful connection.

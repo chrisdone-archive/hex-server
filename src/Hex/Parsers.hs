@@ -78,6 +78,8 @@ requestParser =
     , XCMiscGetXIDRange <$ xcMiscGetXIDRangeParser
     , uncurry InternAtom <$> internAtomParser
     , ChangeProperty <$ changePropertyParser
+    , ChangeWindowAttributes <$ changeWindowAttributesParser
+    , QueryColors <$ queryColorsParser
     ]
   where
     choice = foldr (<|>) (fail "Unknown message type.")
@@ -147,6 +149,22 @@ internAtomParser = do
 changePropertyParser :: StreamParser ()
 changePropertyParser = do
   opcodeParser8 changePropertyOpcode
+  unusedParser 1 -- mode
+  reqlen <- remainingRequestLength
+  unusedParser reqlen
+
+-- | ChangeWindowAttributesParser.
+changeWindowAttributesParser :: StreamParser ()
+changeWindowAttributesParser = do
+  opcodeParser8 changeWindowAttributesOpcode
+  unusedParser 1 -- mode
+  reqlen <- remainingRequestLength
+  unusedParser reqlen
+
+-- | QueryColorsParser.
+queryColorsParser :: StreamParser ()
+queryColorsParser = do
+  opcodeParser8 queryColorsOpcode
   unusedParser 1 -- mode
   reqlen <- remainingRequestLength
   unusedParser reqlen

@@ -1,3 +1,4 @@
+{-# LANGUAGE ParallelListComp #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
 
@@ -77,6 +78,21 @@ buildServerMessage =
         , buildWord32 (coerce aid)
         , buildUnused 20
         ]
+    ColorsQueried sid ->
+      mconcat
+        [ buildWord8 1
+        , buildUnused 1
+        , buildWord16 (coerce sid)
+        , buildWord32 (2 * fromIntegral n)
+        , buildWord16 (fromIntegral n)
+        , buildUnused 22
+        , mconcat (map buildRGB colors)
+        ]
+      where n = length colors
+            colors = [RGB r g b | r <- [0..255] | g <- [0..255] | b <- [0..255]]
+            buildRGB (RGB r g b) =
+              mconcat
+                [buildWord16 r, buildWord16 g, buildWord16 b, buildUnused 2]
 
 buildInfo :: Info -> StreamBuilder
 buildInfo info =

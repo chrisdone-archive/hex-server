@@ -142,12 +142,12 @@ dispatchRequest streamSettings clientState =
           logDebug
             ("Client queried supported extension: " <>
              T.pack (show extensionName))
-          yieldBuiltMessage streamSettings (SupportedExtension sn xcMiscOpcode)
+          reply (SupportedExtension sn xcMiscOpcode)
         _ -> do
           logInfo
             ("Client queried unsupported extension: " <>
              T.pack (show extensionName))
-          yieldBuiltMessage streamSettings (UnsupportedExtension sn)
+          reply (UnsupportedExtension sn)
       pure continue
     CreateGC -> do
       logDebug "Client asked to create a graphics context. Ignoring."
@@ -157,14 +157,14 @@ dispatchRequest streamSettings clientState =
       pure continue
     GetProperty -> do
       logDebug "Client asked for a property. Returning None."
-      yieldBuiltMessage streamSettings (PropertyValue sn)
+      reply (PropertyValue sn)
       pure continue
     CreateWindow -> do
       logInfo "Client asked to create a window. Doing nothing."
       pure continue
     XCMiscGetXIDRange -> do
       logDebug "Client asked for the ID range."
-      yieldBuiltMessage streamSettings (XIDRange sn)
+      reply (XIDRange sn)
       pure continue
     InternAtom name _onlyIfExists -> do
       logDebug ("Request to intern atom: " <> T.pack (show name))
@@ -173,13 +173,21 @@ dispatchRequest streamSettings clientState =
               (fromIntegral (HM.size (clientStateAtoms clientState) + 1) :: Word32)
           atoms = HM.insert atomId name (clientStateAtoms clientState)
       logDebug ("Interned to: " <> T.pack (show atomId))
-      yieldBuiltMessage streamSettings (AtomInterned sn atomId)
+      reply (AtomInterned sn atomId)
       pure (fmap (\s -> s {clientStateAtoms = atoms}) continue)
     ChangeProperty -> do
       logDebug "Client requested to change property. Doing nothing."
       pure continue
+    ChangeWindowAttributes -> do
+      logDebug "Client requested to change window attributes. Ignoring"
+      pure continue
+    QueryColors -> do
+      logDebug "Client queried colors. Sending back colors."
+      reply (ColorsQueried sn)
+      pure continue
   where
     sn = clientStateSequenceNumber clientState
+    reply = yieldBuiltMessage streamSettings
     continue =
       Just
         (clientState
