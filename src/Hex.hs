@@ -196,6 +196,10 @@ dispatchRequest streamSettings clientState =
       logDebug "Client requested window attributes."
       reply (WindowAttributes sn)
       pure continue
+    GetInputFocus -> do
+      logDebug "Client requested input focus."
+      reply (InputFocus sn)
+      pure continue
     GetGeometry -> do
       logDebug "Geometry requested."
       reply (GeometryGot sn)

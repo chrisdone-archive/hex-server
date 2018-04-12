@@ -48,6 +48,9 @@ changeWindowAttributesOpcode = 2
 getWindowAttributesOpcode :: Opcode
 getWindowAttributesOpcode = 3
 
+getInputFocusOpcode :: Opcode
+getInputFocusOpcode = 43
+
 createWindowOpcode :: Opcode
 createWindowOpcode = 1
 

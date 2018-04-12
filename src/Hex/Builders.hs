@@ -154,6 +154,15 @@ buildServerMessage =
         , buildUnused 2
         , buildUnused 6
         ]
+    InputFocus sid ->
+      mconcat
+        [ buildWord8 1
+        , buildWord8 0
+        , buildWord16 (coerce sid)
+        , buildWord32 0
+        , buildWord32 1
+        , buildUnused 20
+        ]
 
 buildInfo :: Info -> StreamBuilder
 buildInfo info =

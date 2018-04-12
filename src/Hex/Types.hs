@@ -88,6 +88,7 @@ data ClientMessage
   | UngrabServer
   | GetSelectionOwner
   | MapWindow
+  | GetInputFocus
   deriving (Show, Eq, Ord)
 
 -- | Some message from the server to the client.
@@ -103,6 +104,7 @@ data ServerMessage
   | WindowAttributes !SequenceNumber
   | GeometryGot !SequenceNumber
   | SelectionOwner !SequenceNumber
+  | InputFocus !SequenceNumber
   deriving (Show, Eq, Ord)
 
 data RGB = RGB !Word16 !Word16 !Word16

@@ -81,6 +81,7 @@ requestParser =
     , ChangeProperty <$ changePropertyParser
     , ChangeWindowAttributes <$ changeWindowAttributesParser
     , GetWindowAttributes <$ getWindowAttributesParser
+    , GetInputFocus <$ getInputFocusParser
     , QueryColors <$ queryColorsParser
     , QueryPointer <$ queryPointerParser
     , GetGeometry <$ getGeometryParser
@@ -183,6 +184,13 @@ getWindowAttributesParser = do
   unusedParser 1
   reqlen <- remainingRequestLength
   unusedParser reqlen
+
+-- | GetInputFocus.
+getInputFocusParser :: StreamParser ()
+getInputFocusParser = do
+  opcodeParser8 getInputFocusOpcode
+  unusedParser 1
+  void remainingRequestLength
 
 -- | QueryColors.
 queryColorsParser :: StreamParser ()
