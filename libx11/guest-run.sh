@@ -9,4 +9,4 @@
 # echo running x11
 # ./x11-bin
 
-DISPLAY=192.168.1.102:0 chromium --no-sandbox --disable-gpu
+DISPLAY=192.168.1.105:0.0 LD_LIBRARY_PATH=/xcb-out/usr/local/lib chromium --no-sandbox --disable-gpu

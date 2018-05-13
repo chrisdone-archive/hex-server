@@ -75,6 +75,10 @@ requestParser =
     , FreeGC <$ freeGCParser
     , GetProperty <$ getPropertyParser
     , CreateWindow <$ createWindowParser
+    , CreatePixmap <$ createPixmapParser
+    , FreePixmap <$ freePixmapParser
+    , GetPointerMapping <$ getPointerMappingParser
+    , AllocColor <$ allocColorParser
     , MapWindow <$ mapWindowParser
     , XCMiscGetXIDRange <$ xcMiscGetXIDRangeParser
     , uncurry InternAtom <$> internAtomParser
@@ -134,6 +138,39 @@ createWindowParser = do
   unusedParser 1 -- depth
   reqlen <- remainingRequestLength
   unusedParser reqlen
+
+-- | CreatePixmap.
+createPixmapParser :: StreamParser ()
+createPixmapParser = do
+  opcodeParser8 createPixmapOpcode
+  unusedParser 1 -- depth
+  _reqlen <- remainingRequestLength
+  unusedParser 4 -- pid
+  unusedParser 4 -- drawable
+  unusedParser 4 -- w, h
+
+-- | FreePixmap.
+freePixmapParser :: StreamParser ()
+freePixmapParser = do
+  opcodeParser8 freePixmapOpcode
+  unusedParser 1
+  _reqlen <- remainingRequestLength
+  unusedParser 4 -- pid
+
+-- | GetPointerMapping.
+getPointerMappingParser :: StreamParser ()
+getPointerMappingParser = do
+  opcodeParser8 getPointerMappingOpcode
+  unusedParser 1
+  void remainingRequestLength
+
+-- | AllocColor.
+allocColorParser :: StreamParser ()
+allocColorParser = do
+  opcodeParser8 allocColorOpcode
+  unusedParser 1
+  _reqlen <- remainingRequestLength
+  unusedParser 12 -- pid
 
 -- | MapWindow.
 mapWindowParser :: StreamParser ()

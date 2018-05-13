@@ -24,12 +24,14 @@ RUN cd /x11/libx11-1.6.4 && C_INCLUDE_PATH=/xcb-out/usr/local/include LD_LIBRARY
 
 RUN cd /x11/libx11-1.6.4 && C_INCLUDE_PATH=/xcb-out/usr/local/include LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/xcb-out/usr/local/lib make install -j4  DESTDIR=/xcb-out
 
+RUN apt-get install emacs chromium -y
+
 COPY OpenDis.c /x11/libx11-1.6.4/src
+COPY QuColors.c /x11/libx11-1.6.4/src
+COPY xcb_io.c /x11/libx11-1.6.4/src
 COPY xcb_disp.c /x11/libx11-1.6.4/src
 
 RUN cd /x11/libx11-1.6.4 && C_INCLUDE_PATH=/xcb-out/usr/local/include LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/xcb-out/usr/local/lib make install -j4  DESTDIR=/xcb-out
-
-RUN apt-get install emacs chromium -y
 
 COPY xcb.c /
 COPY x11.c /

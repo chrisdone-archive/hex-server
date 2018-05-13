@@ -7,5 +7,7 @@ all: Dockerfile
 	&& docker-machine scp ~/libxcb/src/xcb_conn.c custom-linux: > /dev/null \
 	&& docker-machine scp ~/libxcb/src/xcb_util.c custom-linux: > /dev/null \
 	&& docker-machine scp ~/libX11/src/OpenDis.c custom-linux: > /dev/null \
+	&& docker-machine scp ~/libX11/src/QuColors.c custom-linux: > /dev/null \
+	&& docker-machine scp ~/libX11/src/xcb_io.c custom-linux: > /dev/null \
 	&& docker-machine scp ~/libX11/src/xcb_disp.c custom-linux: > /dev/null \
 	&& docker-machine ssh custom-linux docker image build . -t x11

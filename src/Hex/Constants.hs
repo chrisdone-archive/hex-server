@@ -54,6 +54,18 @@ getInputFocusOpcode = 43
 createWindowOpcode :: Opcode
 createWindowOpcode = 1
 
+createPixmapOpcode :: Opcode
+createPixmapOpcode = 53
+
+allocColorOpcode :: Opcode
+allocColorOpcode = 84
+
+freePixmapOpcode :: Opcode
+freePixmapOpcode = 54
+
+getPointerMappingOpcode :: Opcode
+getPointerMappingOpcode = 117
+
 mapWindowOpcode :: Opcode
 mapWindowOpcode = 8
 

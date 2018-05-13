@@ -11,7 +11,9 @@ module Hex
 
 import           BinaryView
 import           Control.Applicative
+import           Control.Concurrent.MVar
 import           Control.Monad.Catch
+import           Control.Monad.IO.Class
 import           Control.Monad.IO.Unlift (MonadUnliftIO)
 import           Control.Monad.Logger.CallStack (logError, logDebug, logInfo, MonadLogger)
 import           Control.Monad.Trans.Reader
@@ -37,18 +39,21 @@ import           Hex.Types
 -- Exposed functions
 
 -- | Runs a server in the current thread.
-runServer :: (MonadLogger m, MonadUnliftIO m, MonadCatch m) => m ()
-runServer =
+runServer :: (MonadLogger m, MonadUnliftIO m, MonadMask m,MonadCatch m) => m ()
+runServer = do
+  mutex <- liftIO (newMVar ())
   Network.runGeneralTCPServer
     (Network.serverSettings (fst x11PortRange) "*")
     (\app -> do
+       -- () <- liftIO (takeMVar mutex)
        logInfo ("New client: " <> T.pack (show (Network.appSockAddr app)))
-       catch
-         (runConduit
-            (Network.appSource app .| logBytes "<=" .| clientConduit .|
-             logBytes "=>" .|
-             Network.appSink app))
-         (\(e :: ClientException) -> logError (T.pack (displayException e)))
+       finally (catch
+                  (runConduit
+                     (Network.appSource app .| logBytes "<=" .| clientConduit .|
+                      logBytes "=>" .|
+                      Network.appSink app))
+                  (\(e :: ClientException) -> logError (T.pack (displayException e))))
+               (liftIO (putMVar mutex ()))
        logInfo ("Client closed: " <> T.pack (show (Network.appSockAddr app))))
 
 -- | Log raw bytes for debugging purposes.
@@ -161,6 +166,20 @@ dispatchRequest streamSettings clientState =
       pure continue
     CreateWindow -> do
       logInfo "Client asked to create a window. Doing nothing."
+      pure continue
+    CreatePixmap -> do
+      logInfo "Client asked to create a pixmap. Doing nothing."
+      pure continue
+    AllocColor -> do
+      logInfo "Client asked to alloc a color."
+      reply (ColorAllocated sn)
+      pure continue
+    GetPointerMapping -> do
+      logInfo "Client asked for pointer mapping."
+      reply (PointerMapping sn)
+      pure continue
+    FreePixmap -> do
+      logInfo "Client asked to free a pixmap. Doing nothing."
       pure continue
     MapWindow -> do
       logInfo "Client asked to map a window. Doing nothing."
