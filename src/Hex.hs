@@ -203,9 +203,9 @@ dispatchRequest streamSettings clientState =
     ChangeWindowAttributes -> do
       logDebug "Client requested to change window attributes. Ignoring"
       pure continue
-    QueryColors -> do
-      logDebug "Client queried colors. Sending back colors."
-      reply (ColorsQueried sn)
+    QueryColors cmi pixels -> do
+      logDebug ("Client queried colors: " <> T.pack (show cmi) <> " " <> T.pack (show pixels) <> ", length=" <> T.pack (show (length pixels)))
+      reply (ColorsQueried sn pixels)
       pure continue
     QueryPointer -> do
       logDebug "Client queried pointer. Sending back pointer."

@@ -80,7 +80,7 @@ data ClientMessage
   | InternAtom !ByteString !Bool
   | ChangeProperty
   | ChangeWindowAttributes
-  | QueryColors
+  | QueryColors !ColorMapID ![Word32]
   | QueryPointer
   | GetWindowAttributes
   | GetGeometry
@@ -103,7 +103,7 @@ data ServerMessage
   | SupportedExtension !SequenceNumber !Opcode
   | XIDRange !SequenceNumber
   | AtomInterned !SequenceNumber !AtomID
-  | ColorsQueried !SequenceNumber
+  | ColorsQueried !SequenceNumber ![Word32]
   | PointerQueried !SequenceNumber
   | WindowAttributes !SequenceNumber
   | GeometryGot !SequenceNumber

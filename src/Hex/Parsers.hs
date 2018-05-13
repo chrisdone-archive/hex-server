@@ -86,7 +86,7 @@ requestParser =
     , ChangeWindowAttributes <$ changeWindowAttributesParser
     , GetWindowAttributes <$ getWindowAttributesParser
     , GetInputFocus <$ getInputFocusParser
-    , QueryColors <$ queryColorsParser
+    , queryColorsParser
     , QueryPointer <$ queryPointerParser
     , GetGeometry <$ getGeometryParser
     , GrabServer <$ grabServerParser
@@ -230,12 +230,14 @@ getInputFocusParser = do
   void remainingRequestLength
 
 -- | QueryColors.
-queryColorsParser :: StreamParser ()
+queryColorsParser :: StreamParser ClientMessage
 queryColorsParser = do
   opcodeParser8 queryColorsOpcode
   unusedParser 1
-  reqlen <- remainingRequestLength
-  unusedParser reqlen
+  items <- fmap (subtract 2) card16Parser
+  colorMap <- card32Parser
+  pixels <- mapM (const card32Parser) [1..items]
+  pure (QueryColors (coerce colorMap) pixels)
 
 -- | QueryPointer.
 queryPointerParser :: StreamParser ()
@@ -317,6 +319,16 @@ card16Parser =
           (case endianness of
              MostSignificantFirst -> Atto.anyWord16be
              LeastSignificantFirst -> Atto.anyWord16le))
+
+-- | Parse a 32-bit word with the right endianness.
+card32Parser :: StreamParser Word32
+card32Parser =
+  StreamParser
+    (do endianness <- asks streamSettingsEndianness
+        lift
+          (case endianness of
+             MostSignificantFirst -> Atto.anyWord32be
+             LeastSignificantFirst -> Atto.anyWord32le))
 
 --------------------------------------------------------------------------------
 -- X11 Helpers
