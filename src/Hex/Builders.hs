@@ -36,6 +36,14 @@ buildServerMessage =
         , buildUnused 3
         , buildUnused 20
         ]
+    GrabPointerStatus sid ->
+      mconcat
+        [ buildWord8 1
+        , buildWord8 0
+        , buildWord16 (coerce sid)
+        , buildWord32 0
+        , buildUnused 24
+        ]
     SelectionOwner sid ->
       mconcat
         [ buildWord8 1

@@ -36,6 +36,9 @@ createGCOpcode = 55
 freeGCOpcode :: Opcode
 freeGCOpcode = 60
 
+changeGCOpcode :: Opcode
+changeGCOpcode = 56
+
 getPropertyOpcode :: Opcode
 getPropertyOpcode = 20
 
@@ -92,6 +95,21 @@ xcMiscOpcode = 128
 
 xcMiscGetXIDRangeOpcode :: Opcode
 xcMiscGetXIDRangeOpcode = 1
+
+deletePropertyOpcode :: Opcode
+deletePropertyOpcode = 19
+
+polyFillRectangleOpcode :: Opcode
+polyFillRectangleOpcode = 70
+
+setClipRectanglesOpcode :: Opcode
+setClipRectanglesOpcode = 59
+
+openFontOpcode :: Opcode
+openFontOpcode = 45
+
+createGlyphCursorOpcode :: Opcode
+createGlyphCursorOpcode = 94
 
 --------------------------------------------------------------------------------
 -- Atoms

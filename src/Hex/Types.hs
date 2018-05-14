@@ -74,6 +74,7 @@ data ClientMessage
   = QueryExtension !ByteString
   | CreateGC
   | FreeGC
+  | ChangeGC
   | GetProperty
   | CreateWindow
   | XCMiscGetXIDRange
@@ -93,6 +94,11 @@ data ClientMessage
   | FreePixmap
   | AllocColor
   | GetPointerMapping
+  | SetClipRectangles
+  | PolyFillRectangle
+  | DeleteProperty
+  | GrabPointer
+  | Ignored
   deriving (Show, Eq, Ord)
 
 -- | Some message from the server to the client.
@@ -111,6 +117,7 @@ data ServerMessage
   | InputFocus !SequenceNumber
   | ColorAllocated !SequenceNumber
   | PointerMapping !SequenceNumber
+  | GrabPointerStatus !SequenceNumber
   deriving (Show, Eq, Ord)
 
 data RGB = RGB !Word16 !Word16 !Word16

@@ -33,6 +33,12 @@ COPY xcb_disp.c /x11/libx11-1.6.4/src
 
 RUN cd /x11/libx11-1.6.4 && C_INCLUDE_PATH=/xcb-out/usr/local/include LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/xcb-out/usr/local/lib make install -j4  DESTDIR=/xcb-out
 
+RUN apt-get install libgles1-mesa -y
+
+RUN mkdir /usr/lib/chromium/swiftshader && \
+  ln -s /usr/lib/x86_64-linux-gnu/libGLESv2.so /usr/lib/chromium/swiftshader/libGLESv2.so && \
+  ln -s /usr/lib/x86_64-linux-gnu/libEGL.so /usr/lib/chromium/swiftshader/libEGL.so
+
 COPY xcb.c /
 COPY x11.c /
 COPY guest-run.sh /

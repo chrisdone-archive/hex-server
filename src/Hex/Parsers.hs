@@ -73,6 +73,11 @@ requestParser =
     [ QueryExtension <$> queryExtensionParser
     , CreateGC <$ createGCParser
     , FreeGC <$ freeGCParser
+    , ChangeGC <$ changeGCParser
+    , ignore openFontOpcode
+    , ignore createGlyphCursorOpcode
+    , ignore 35
+    , GrabPointer <$ ignore 26
     , GetProperty <$ getPropertyParser
     , CreateWindow <$ createWindowParser
     , CreatePixmap <$ createPixmapParser
@@ -92,9 +97,16 @@ requestParser =
     , GrabServer <$ grabServerParser
     , UngrabServer <$ ungrabServerParser
     , GetSelectionOwner <$ getSelectionOwnerParser
+    , SetClipRectangles <$ setClipRectanglesParser
+    , PolyFillRectangle <$ polyFillRectangleParser
+    , DeleteProperty <$ deletePropertyParser
     ]
   where
     choice = foldr (<|>) (fail "Unknown message type.")
+    ignore code = Ignored <$ (do opcodeParser8 code
+                                 unusedParser 1
+                                 reqlen <- remainingRequestLength
+                                 unusedParser reqlen)
 
 -- | QueryExtension: This request determines if the named extension is
 -- present.
@@ -111,6 +123,14 @@ queryExtensionParser = do
 createGCParser :: StreamParser ()
 createGCParser = do
   opcodeParser8 createGCOpcode
+  unusedParser 1
+  reqlen <- remainingRequestLength
+  unusedParser reqlen
+
+-- | ChangeGC.
+changeGCParser :: StreamParser ()
+changeGCParser = do
+  opcodeParser8 changeGCOpcode
   unusedParser 1
   reqlen <- remainingRequestLength
   unusedParser reqlen
@@ -276,6 +296,30 @@ getSelectionOwnerParser = do
   unusedParser 1
   void remainingRequestLength
   unusedParser 4
+
+-- | SetClipRectangles.
+setClipRectanglesParser :: StreamParser ()
+setClipRectanglesParser = do
+  opcodeParser8 setClipRectanglesOpcode
+  unusedParser 1
+  reqlen <- remainingRequestLength
+  unusedParser reqlen
+
+-- | PolyFillRectangle.
+polyFillRectangleParser :: StreamParser ()
+polyFillRectangleParser = do
+  opcodeParser8 polyFillRectangleOpcode
+  unusedParser 1
+  reqlen <- remainingRequestLength
+  unusedParser reqlen
+
+-- | PolyFillRectangle.
+deletePropertyParser :: StreamParser ()
+deletePropertyParser = do
+  opcodeParser8 deletePropertyOpcode
+  unusedParser 1
+  reqlen <- remainingRequestLength
+  unusedParser reqlen
 
 --------------------------------------------------------------------------------
 -- Parsers for X11-protocol-specific types

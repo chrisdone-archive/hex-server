@@ -49,8 +49,9 @@ runServer = do
        logInfo ("New client: " <> T.pack (show (Network.appSockAddr app)))
        finally (catch
                   (runConduit
-                     (Network.appSource app .| logBytes "<=" .| clientConduit .|
-                      logBytes "=>" .|
+                     (Network.appSource app .| -- logBytes "<=" .|
+                      clientConduit .|
+                      -- logBytes "=>" .|
                       Network.appSink app))
                   (\(e :: ClientException) -> logError (T.pack (displayException e))))
                (liftIO (putMVar mutex ()))
@@ -160,6 +161,9 @@ dispatchRequest streamSettings clientState =
     FreeGC -> do
       logDebug "Client asked to free a graphics context. Ignoring."
       pure continue
+    ChangeGC -> do
+      logDebug "Client asked to change a graphics context. Ignoring."
+      pure continue
     GetProperty -> do
       logDebug "Client asked for a property. Returning None."
       reply (PropertyValue sn)
@@ -204,7 +208,11 @@ dispatchRequest streamSettings clientState =
       logDebug "Client requested to change window attributes. Ignoring"
       pure continue
     QueryColors cmi pixels -> do
-      logDebug ("Client queried colors: " <> T.pack (show cmi) <> " " <> T.pack (show pixels) <> ", length=" <> T.pack (show (length pixels)))
+      logDebug
+        ("Client queried colors: " <> T.pack (show cmi) <> " " <>
+         T.pack (show pixels) <>
+         ", length=" <>
+         T.pack (show (length pixels)))
       reply (ColorsQueried sn pixels)
       pure continue
     QueryPointer -> do
@@ -233,6 +241,20 @@ dispatchRequest streamSettings clientState =
       logDebug "Client requested selection owner."
       reply (SelectionOwner sn)
       pure continue
+    SetClipRectangles -> do
+      logDebug "Client set clip rectangles."
+      pure continue
+    PolyFillRectangle -> do
+      logDebug "Client poly-filled a rectangle."
+      pure continue
+    DeleteProperty -> do
+      logDebug "Client deleted a property."
+      pure continue
+    GrabPointer -> do
+      logDebug "Grab the pointer."
+      reply (GrabPointerStatus sn)
+      pure continue
+    Ignored -> logDebug "Ignored message." *> pure continue
   where
     sn = clientStateSequenceNumber clientState
     reply = yieldBuiltMessage streamSettings
