@@ -129,7 +129,7 @@ data NewWindow = NewWindow
   , newWindowY :: !Int16
   , newWindowWidth :: !Word16
   , newWindowHeight :: !Word16
-  , newBorderBorderWidth :: !Word16
+  , newWindowBorderWidth :: !Word16
   } deriving (Show, Eq, Ord)
 
 data RGB = RGB !Word16 !Word16 !Word16

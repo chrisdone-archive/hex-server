@@ -12,6 +12,7 @@ import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Lazy.Builder as L
 import           Data.Coerce
+import           Data.Int
 import           Data.Monoid
 import           Data.Set (Set)
 import qualified Data.Set as Set
@@ -25,6 +26,21 @@ streamBuilderToByteString settings builder =
 buildServerMessage :: ServerMessage -> StreamBuilder
 buildServerMessage =
   \case
+    CreateNotify sn nw ->
+      mconcat
+        [ buildWord8 16
+        , buildUnused 1
+        , buildWord16 (coerce sn)
+        , buildWord32 (coerce (newWindowParent nw))
+        , buildWord32 (coerce (newWindowID nw))
+        , buildInt16 (coerce (newWindowX nw))
+        , buildInt16 (coerce (newWindowY nw))
+        , buildWord16 (coerce (newWindowWidth nw))
+        , buildWord16 (coerce (newWindowHeight nw))
+        , buildWord16 (coerce (newWindowBorderWidth nw))
+        , buildEnum8 True
+        , buildUnused 9
+        ]
     ConnectionAccepted info -> mconcat [buildEnum8 Success, buildInfo info]
     UnsupportedExtension sid ->
       mconcat
@@ -345,6 +361,9 @@ buildLazyByteString = StreamBuilder . const . L.lazyByteString
 
 buildWord8 :: Word8 -> StreamBuilder
 buildWord8 = StreamBuilder . const . L.word8
+
+buildInt16 :: Int16 -> StreamBuilder
+buildInt16 = buildWord16 . fromIntegral
 
 buildWord16 :: Word16 -> StreamBuilder
 buildWord16 w =

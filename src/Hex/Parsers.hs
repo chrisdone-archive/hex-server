@@ -77,7 +77,7 @@ requestParser =
     , ChangeGC <$ changeGCParser
     , ignore openFontOpcode
     , ignore createGlyphCursorOpcode
-    , ignore 35
+    , ignore 35 -- AllowEvents
     , GrabPointer <$ ignore 26
     , GetProperty <$ getPropertyParser
     , createWindowParser
@@ -175,7 +175,7 @@ createWindowParser = do
         , newWindowY = y
         , newWindowWidth = w
         , newWindowHeight = h
-        , newBorderBorderWidth = bw
+        , newWindowBorderWidth = bw
         }))
 
 -- | CreatePixmap.

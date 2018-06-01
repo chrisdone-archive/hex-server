@@ -169,7 +169,8 @@ dispatchRequest streamSettings clientState =
       reply (PropertyValue sn)
       pure continue
     CreateWindow newWindow -> do
-      logInfo "Client asked to create a window. Doing nothing."
+      logInfo "Client asked to create a window. Sending CreateNotify event."
+      reply (CreateNotify sn newWindow)
       pure continue
     CreatePixmap -> do
       logInfo "Client asked to create a pixmap. Doing nothing."
