@@ -168,7 +168,7 @@ dispatchRequest streamSettings clientState =
       logDebug "Client asked for a property. Returning None."
       reply (PropertyValue sn)
       pure continue
-    CreateWindow -> do
+    CreateWindow newWindow -> do
       logInfo "Client asked to create a window. Doing nothing."
       pure continue
     CreatePixmap -> do

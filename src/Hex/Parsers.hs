@@ -17,6 +17,7 @@ import           Data.ByteString (ByteString)
 import qualified Data.ByteString as S
 import           Data.Coerce
 import           Data.Functor
+import           Data.Int
 import           Data.Word
 import           Hex.Constants
 import           Hex.Types
@@ -79,7 +80,7 @@ requestParser =
     , ignore 35
     , GrabPointer <$ ignore 26
     , GetProperty <$ getPropertyParser
-    , CreateWindow <$ createWindowParser
+    , createWindowParser
     , CreatePixmap <$ createPixmapParser
     , FreePixmap <$ freePixmapParser
     , GetPointerMapping <$ getPointerMappingParser
@@ -152,12 +153,30 @@ getPropertyParser = do
   unusedParser reqlen
 
 -- | CreateWindow.
-createWindowParser :: StreamParser ()
+createWindowParser :: StreamParser ClientMessage
 createWindowParser = do
   opcodeParser8 createWindowOpcode
   unusedParser 1 -- depth
   reqlen <- remainingRequestLength
-  unusedParser reqlen
+  wid <- card32Parser
+  parent <- card32Parser
+  x <- int16Parser
+  y <- int16Parser
+  w <- card16Parser
+  h <- card16Parser
+  bw <- card16Parser
+  unusedParser (reqlen - (4 + 4 + 2 + 2 + 2 + 2 + 2))
+  pure
+    (CreateWindow
+       (NewWindow
+        { newWindowID = coerce wid
+        , newWindowParent = coerce parent
+        , newWindowX = x
+        , newWindowY = y
+        , newWindowWidth = w
+        , newWindowHeight = h
+        , newBorderBorderWidth = bw
+        }))
 
 -- | CreatePixmap.
 createPixmapParser :: StreamParser ()
@@ -363,6 +382,11 @@ card16Parser =
           (case endianness of
              MostSignificantFirst -> Atto.anyWord16be
              LeastSignificantFirst -> Atto.anyWord16le))
+
+-- | Parse a 16-bit int with the right endianness.
+int16Parser :: StreamParser Int16
+int16Parser =
+  fmap fromIntegral card16Parser
 
 -- | Parse a 32-bit word with the right endianness.
 card32Parser :: StreamParser Word32

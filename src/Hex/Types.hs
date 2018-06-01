@@ -14,6 +14,7 @@ import           Data.ByteString.Lazy.Builder (Builder)
 import qualified Data.Conduit.Attoparsec as CA
 import           Data.HashMap.Strict (HashMap)
 import           Data.Hashable (Hashable)
+import           Data.Int
 import           Data.Set (Set)
 import           Data.Typeable
 import           Data.Word
@@ -76,7 +77,7 @@ data ClientMessage
   | FreeGC
   | ChangeGC
   | GetProperty
-  | CreateWindow
+  | CreateWindow !NewWindow
   | XCMiscGetXIDRange
   | InternAtom !ByteString !Bool
   | ChangeProperty
@@ -118,7 +119,18 @@ data ServerMessage
   | ColorAllocated !SequenceNumber
   | PointerMapping !SequenceNumber
   | GrabPointerStatus !SequenceNumber
+  | CreateNotify !SequenceNumber !NewWindow
   deriving (Show, Eq, Ord)
+
+data NewWindow = NewWindow
+  { newWindowID :: !WindowID
+  , newWindowParent :: !WindowID
+  , newWindowX :: !Int16
+  , newWindowY :: !Int16
+  , newWindowWidth :: !Word16
+  , newWindowHeight :: !Word16
+  , newBorderBorderWidth :: !Word16
+  } deriving (Show, Eq, Ord)
 
 data RGB = RGB !Word16 !Word16 !Word16
   deriving (Show, Eq, Ord)
