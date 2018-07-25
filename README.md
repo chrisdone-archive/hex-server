@@ -1,5 +1,5 @@
-# hex-server
+# hex-server [WIP]
 
-A minimal X11 server written in Haskell.
+A minimal X11 server written in Haskell
 
-ssh tc@127.0.0.1 -p 2222 -L 6000:127.0.0.1:6000
+Just a hobby experiment.
